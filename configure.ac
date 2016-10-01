@@ -140,6 +140,9 @@ libzmq_on_gnu="no"
 # Set some default features required by ZeroMQ code
 CPPFLAGS="-D_REENTRANT -D_THREAD_SAFE -Wno-long-long $CPPFLAGS"
 
+# Will be used to add flags to pkg-config useful when apps want to statically link
+PKGCFG_LIBS_PRIVATE=""
+
 # For host type checks
 AC_CANONICAL_HOST
 
@@ -450,6 +453,8 @@ elif test "x$with_libsodium" = "xyes"; then
             libzmq_werror="no"
         ;;
     esac
+
+    PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE $sodium_LIBS"
 else
     AC_MSG_NOTICE([Using tweetnacl for CURVE security])
     AC_DEFINE(ZMQ_HAVE_CURVE, [1], [Using curve encryption])
@@ -478,6 +483,7 @@ fi
 
 if test "x$have_pgm_library" = "xyes"; then
     AC_DEFINE(ZMQ_HAVE_OPENPGM, [1], [Have OpenPGM extension])
+    PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE $pgm_LIBS"
 fi
 
 AM_CONDITIONAL(HAVE_PGM, test "x$have_pgm_library" = "xyes")
@@ -501,9 +507,10 @@ if test "x$with_norm_ext" != "xno"; then
     if test "x$with_norm_ext" != "xyes"; then
         norm_path="${with_norm_ext}"
         LIBZMQ_EXTRA_CXXFLAGS="-I${norm_path}/include ${LIBZMQ_EXTRA_CXXFLAGS}"
-        LIBZMQ_EXTRA_LDFLAGS="-I${norm_path}/include ${LIBZMQ_EXTRA_LDFLAGS}"
+        LIBZMQ_EXTRA_LDFLAGS="-L${norm_path}/lib ${LIBZMQ_EXTRA_LDFLAGS}"
     fi
-    LIBS="-lnorm $LIBS"
+    LIBS="-L${norm_path}/lib -lnorm $LIBS"
+    PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE -lnorm"
 else
     AC_MSG_RESULT([no])
 fi
@@ -649,6 +656,8 @@ AC_SUBST(LIBZMQ_EXTRA_LDFLAGS)
 AC_SUBST(LIBZMQ_VMCI_CXXFLAGS)
 AC_SUBST(LIBZMQ_VMCI_LDFLAGS)
 
+AC_SUBST(pkg_config_libs_private, $PKGCFG_LIBS_PRIVATE)
+
 # set pkgconfigdir, allow override
 AC_ARG_WITH([pkgconfigdir],
     AS_HELP_STRING([--with-pkgconfigdir=PATH],
@@ -662,7 +671,6 @@ AC_CONFIG_FILES([ \
     src/libzmq.pc \
     doc/Makefile \
     builds/Makefile \
-    builds/msvc/Makefile \
-    packaging/redhat/zeromq.spec])
+    builds/msvc/Makefile])
 
 AC_OUTPUT

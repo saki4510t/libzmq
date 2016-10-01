@@ -133,6 +133,8 @@ src_libzmq_la_SOURCES = \
 	src/poller.hpp \
 	src/poller_base.cpp \
 	src/poller_base.hpp \
+	src/pollset.cpp \
+	src/pollset.hpp \
 	src/precompiled.cpp \
 	src/precompiled.hpp \
 	src/proxy.cpp \
@@ -403,6 +405,7 @@ test_apps = \
 	tests/test_stream_exceeds_buffer \
 	tests/test_pub_invert_matching \
 	tests/test_base85 \
+	tests/test_bind_after_connect_tcp \
 	tests/test_sodium
 
 tests_test_ancillaries_SOURCES = tests/test_ancillaries.cpp
@@ -608,6 +611,9 @@ tests_test_stream_exceeds_buffer_LDADD = src/libzmq.la
 tests_test_pub_invert_matching_SOURCES = tests/test_pub_invert_matching.cpp
 tests_test_pub_invert_matching_LDADD = src/libzmq.la
 
+tests_test_bind_after_connect_tcp_SOURCES = tests/test_bind_after_connect_tcp.cpp
+tests_test_bind_after_connect_tcp_LDADD = src/libzmq.la
+
 tests_test_base85_SOURCES = tests/test_base85.cpp
 tests_test_base85_LDADD = src/libzmq.la
 
@@ -786,6 +792,8 @@ EXTRA_DIST = \
 	version.sh	\
 	src/libzmq.pc.cmake.in \
 	src/libzmq.vers \
+	src/version.rc.in \
+	tests/CMakeLists.txt \
 	tools/curve_keygen.cpp
 
 MAINTAINERCLEANFILES = \
@@ -810,7 +818,6 @@ dist-hook:
 	else \
 		echo A git clone is required to generate a ChangeLog >&2; \
 	fi
-	-cp $(top_srcdir)/packaging/redhat/zeromq.spec $(distdir)/zeromq.spec
 
 maintainer-clean-local:
 	-rm -rf $(top_srcdir)/config

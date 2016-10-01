@@ -16,6 +16,9 @@ if(COMPILER_SUPPORTS_C11)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu11")
 endif()
 
+# Will be used to add flags to pkg-config useful when apps want to statically link
+set (pkg_config_libs_private "")
+
 option (WITH_OPENPGM "Build with support for OpenPGM" OFF)
 option (WITH_VMCI "Build with support for VMware VMCI socket" OFF)
 
@@ -45,6 +48,7 @@ elseif (WITH_LIBSODIUM)
         endif ()
         set (ZMQ_USE_LIBSODIUM 1)
         set (ZMQ_HAVE_CURVE 1)
+        set (pkg_config_libs_private "${pkg_config_libs_private} -lsodium")
     else ()
         message (FATAL_ERROR
             "libsodium is not installed. Install it, then run CMake again")
@@ -77,7 +81,7 @@ if (WITH_MILITANT)
 endif()
 
 set (POLLER "" CACHE STRING "Choose polling system. valid values are
-                            kqueue, epoll, devpoll, poll or select [default=autodetect]")
+                            kqueue, epoll, devpoll, pollset, poll or select [default=autodetect]")
 
 include (CheckFunctionExists)
 include (CheckTypeSize)
@@ -110,6 +114,15 @@ if (POLLER STREQUAL "")
 endif ()
 
 if (POLLER STREQUAL "")
+    set (CMAKE_REQUIRED_INCLUDES sys/pollset.h)
+    check_function_exists (pollset_create HAVE_POLLSET)
+    set (CMAKE_REQUIRED_INCLUDES)
+    if (HAVE_POLLSET)
+        set (POLLER "pollset")
+    endif()
+endif ()
+
+if (POLLER STREQUAL "")
     set (CMAKE_REQUIRED_INCLUDES poll.h)
     check_function_exists (poll HAVE_POLL)
     set (CMAKE_REQUIRED_INCLUDES)
@@ -138,6 +151,7 @@ endif ()
 if (POLLER STREQUAL "kqueue"
  OR POLLER STREQUAL "epoll"
  OR POLLER STREQUAL "devpoll"
+ OR POLLER STREQUAL "pollset"
  OR POLLER STREQUAL "poll"
  OR POLLER STREQUAL "select")
     message (STATUS "Detected ${POLLER} polling method")
@@ -329,7 +343,7 @@ find_package (PythonInterp)
 find_package (AsciiDoc)
 
 cmake_dependent_option (WITH_DOC "Build Reference Guide documentation (requires DocBook)" ON
-                       "PYTHON_FOUND;ASCIIDOC_FOUND" OFF)
+                       "PYTHONINTERP_FOUND;ASCIIDOC_FOUND" OFF)
 
 if (MSVC)
   if (WITH_OPENPGM)
@@ -468,6 +482,7 @@ set (cxx-sources
         plain_server.cpp
         poll.cpp
         poller_base.cpp
+        pollset.cpp
         precompiled.cpp
         proxy.cpp
         pub.cpp
@@ -623,7 +638,7 @@ file (MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc)
 file (GLOB docs RELATIVE ${CMAKE_CURRENT_BINARY_DIR}/ "${CMAKE_CURRENT_SOURCE_DIR}/doc/*.txt")
 set (html-docs)
 foreach (txt ${docs})
-  string (REGEX REPLACE ".*/ (.*)\\.txt" "\\1.html" html ${txt})
+  string (REGEX REPLACE ".*/(.*)\\.txt" "\\1.html" html ${txt})
   set (src ${txt})
   set (dst doc/${html})
   add_custom_command (
@@ -694,7 +709,7 @@ if (MSVC)
     RELEASE_POSTFIX "${MSVC_TOOLSET}-mt-s-${ZMQ_VERSION_MAJOR}_${ZMQ_VERSION_MINOR}_${ZMQ_VERSION_PATCH}"
     RELWITHDEBINFO_POSTFIX "${MSVC_TOOLSET}-mt-s-${ZMQ_VERSION_MAJOR}_${ZMQ_VERSION_MINOR}_${ZMQ_VERSION_PATCH}"
     DEBUG_POSTFIX "${MSVC_TOOLSET}-mt-sgd-${ZMQ_VERSION_MAJOR}_${ZMQ_VERSION_MINOR}_${ZMQ_VERSION_PATCH}"
-    COMPILE_FLAGS "/D ZMQ_STATIC"
+    COMPILE_FLAGS "/DZMQ_STATIC"
     OUTPUT_NAME "libzmq-static")
 else ()
     add_library (libzmq SHARED ${sources} ${public_headers} ${html-docs} ${readme-docs} ${zmq-pkgconfig})

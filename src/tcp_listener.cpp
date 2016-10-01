@@ -273,11 +273,15 @@ zmq::fd_t zmq::tcp_listener_t::accept ()
 #else
     socklen_t ss_len = sizeof (ss);
 #endif
+#if defined ZMQ_HAVE_SOCK_CLOEXEC
+    fd_t sock = ::accept4 (s, (struct sockaddr *) &ss, &ss_len, SOCK_CLOEXEC);
+#else
     fd_t sock = ::accept (s, (struct sockaddr *) &ss, &ss_len);
+#endif
 
 #ifdef ZMQ_HAVE_WINDOWS
     if (sock == INVALID_SOCKET) {
-		const int last_error = WSAGetLastError();
+        const int last_error = WSAGetLastError();
         wsa_assert (last_error == WSAEWOULDBLOCK ||
             last_error == WSAECONNRESET ||
             last_error == WSAEMFILE ||
@@ -299,9 +303,9 @@ zmq::fd_t zmq::tcp_listener_t::accept ()
     }
 #endif
 
+#if !defined ZMQ_HAVE_SOCK_CLOEXEC && defined FD_CLOEXEC
     //  Race condition can cause socket not to be closed (if fork happens
     //  between accept and this point).
-#ifdef FD_CLOEXEC
     int rc = fcntl (sock, F_SETFD, FD_CLOEXEC);
     errno_assert (rc != -1);
 #endif
