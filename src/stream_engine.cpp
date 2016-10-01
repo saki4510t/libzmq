@@ -34,6 +34,11 @@
 #include <new>
 #include <sstream>
 
+// XXX add saki
+#ifdef ZMQ_HAVE_LINUX
+#include <unistd.h>
+#endif
+
 #include "stream_engine.hpp"
 #include "io_thread.hpp"
 #include "session_base.hpp"
