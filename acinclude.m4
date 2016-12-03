@@ -95,8 +95,13 @@ AC_DEFUN([LIBZMQ_CHECK_DOC_BUILD], [{
         AS_HELP_STRING([--without-docs],
             [Don't build and install man pages [default=build]]),
         [with_docs=$withval])
+    AC_ARG_WITH([documentation], [AS_HELP_STRING([--without-documentation],
+        [Don't build and install man pages [default=build] DEPRECATED: use --without-docs])])
 
-    if test "x$with_docs" = "xno"; then
+    if test "x$with_documentation" = "xno"; then
+        AC_MSG_WARN([--without-documentation is DEPRECATED and will be removed in the next release, use --without-docs])
+    fi
+    if test "x$with_docs" = "xno" || test "x$with_documentation" = "xno"; then
         libzmq_build_doc="no"
         libzmq_install_man="no"
     else
@@ -893,7 +898,7 @@ FD_ZERO(&t_rfds);
 FD_SET(0, &t_rfds);
 tv.tv_sec = 5;
 tv.tv_usec = 0;
-select(1, &t_rfds, NULL, NULL, &tv);
+select(1, &t_rfds, 0, 0, &tv);
         ]])],
         [$1],[$2]
     )

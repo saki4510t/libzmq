@@ -31,6 +31,11 @@
 #include "macros.hpp"
 
 #include <string.h>
+
+#ifndef ZMQ_HAVE_WINDOWS
+#include <unistd.h>
+#endif
+
 #include <new>
 #include <sstream>
 
@@ -156,6 +161,12 @@ zmq::stream_engine_t::~stream_engine_t ()
         wsa_assert (rc != SOCKET_ERROR);
 #else
         int rc = close (s);
+#ifdef __FreeBSD_kernel__
+        // FreeBSD may return ECONNRESET on close() under load but this is not
+        // an error.
+        if (rc == -1 && errno == ECONNRESET)
+            rc = 0;
+#endif
         errno_assert (rc == 0);
 #endif
         s = retired_fd;
