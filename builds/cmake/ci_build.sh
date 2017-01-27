@@ -23,8 +23,11 @@ if [ -z $CURVE ]; then
 elif [ $CURVE == "libsodium" ]; then
     CMAKE_OPTS+=("-DWITH_LIBSODIUM=ON")
 
-    git clone --depth 1 -b stable git://github.com/jedisct1/libsodium.git
-    ( cd libsodium; ./autogen.sh; ./configure --prefix=$BUILD_PREFIX; make install)
+    if ! ((command -v dpkg-query >/dev/null 2>&1 && dpkg-query --list libsodium-dev >/dev/null 2>&1) || \
+            (command -v brew >/dev/null 2>&1 && brew ls --versions libsodium >/dev/null 2>&1)); then
+        git clone --depth 1 -b stable git://github.com/jedisct1/libsodium.git
+        ( cd libsodium; ./autogen.sh; ./configure --prefix=$BUILD_PREFIX; make check; make install)
+    fi
 fi
 
 # Build, check, and install from local source

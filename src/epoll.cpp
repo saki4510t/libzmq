@@ -48,7 +48,14 @@ zmq::epoll_t::epoll_t (const zmq::ctx_t &ctx_) :
     ctx(ctx_),
     stopping (false)
 {
+#ifdef ZMQ_USE_EPOLL_CLOEXEC
+    //  Setting this option result in sane behaviour when exec() functions
+    //  are used. Old sockets are closed and don't block TCP ports, avoid
+    //  leaks, etc.
+    epoll_fd = epoll_create1 (EPOLL_CLOEXEC);
+#else
     epoll_fd = epoll_create (1);
+#endif
     errno_assert (epoll_fd != -1);
 }
 
@@ -92,7 +99,9 @@ void zmq::epoll_t::rm_fd (handle_t handle_)
     int rc = epoll_ctl (epoll_fd, EPOLL_CTL_DEL, pe->fd, &pe->ev);
     errno_assert (rc != -1);
     pe->fd = retired_fd;
+    retired_sync.lock ();
     retired.push_back (pe);
+    retired_sync.unlock ();
 
     //  Decrease the load metric of the thread.
     adjust_load (-1);
@@ -180,10 +189,12 @@ void zmq::epoll_t::loop ()
         }
 
         //  Destroy retired event sources.
+        retired_sync.lock ();
         for (retired_t::iterator it = retired.begin (); it != retired.end (); ++it) {
             LIBZMQ_DELETE(*it);
         }
         retired.clear ();
+        retired_sync.unlock ();
     }
 }
 

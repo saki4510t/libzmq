@@ -20,8 +20,11 @@ if [ $BUILD_TYPE == "default" ]; then
     elif [ $CURVE == "libsodium" ]; then
         CONFIG_OPTS+=("--with-libsodium=yes")
 
-        git clone --depth 1 -b stable git://github.com/jedisct1/libsodium.git
-        ( cd libsodium; ./autogen.sh; ./configure --prefix=$BUILD_PREFIX; make check; make install)
+        if ! ((command -v dpkg-query >/dev/null 2>&1 && dpkg-query --list libsodium-dev >/dev/null 2>&1) || \
+                (command -v brew >/dev/null 2>&1 && brew ls --versions libsodium >/dev/null 2>&1)); then
+            git clone --depth 1 -b stable git://github.com/jedisct1/libsodium.git
+            ( cd libsodium; ./autogen.sh; ./configure --prefix=$BUILD_PREFIX; make check; make install)
+        fi
     fi
 
     if [ -z $DRAFT ] || [ $DRAFT == "disabled" ]; then

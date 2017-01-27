@@ -38,9 +38,11 @@ AC_SUBST(PACKAGE_VERSION)
 # ZeroMQ version 4.0: 4:0:0 (ABI version 4)
 # ZeroMQ version 4.1: 5:0:0 (ABI version 5)
 # ZeroMQ version 4.2.0: 6:0:1 (ABI version 5)
+# ZeroMQ version 4.2.1: 6:1:1 (ABI version 5)
+# ZeroMQ version 4.2.2: 6:2:1 (ABI version 5)
 #
 # libzmq -version-info current:revision:age
-LTVER="6:0:1"
+LTVER="6:2:1"
 AC_SUBST(LTVER)
 
 # Take a copy of original flags
@@ -358,8 +360,14 @@ AC_ARG_ENABLE([eventfd],
 
 if test "x$zmq_enable_eventfd" = "xyes"; then
     # Check if we have eventfd.h header file.
-    AC_CHECK_HEADERS(sys/eventfd.h,
-        [AC_DEFINE(ZMQ_HAVE_EVENTFD, 1, [Have eventfd extension])])
+    AC_CHECK_HEADERS(sys/eventfd.h, [
+        AC_DEFINE(ZMQ_HAVE_EVENTFD, 1, [Have eventfd extension])
+        LIBZMQ_CHECK_EVENTFD_CLOEXEC([
+            AC_DEFINE([ZMQ_HAVE_EVENTFD_CLOEXEC],
+               [1],
+               [Whether EFD_CLOEXEC is defined and functioning.])
+            ])
+    ])
 fi
 
 # Conditionally build performance measurement tools

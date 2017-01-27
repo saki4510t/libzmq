@@ -311,11 +311,11 @@ int zmq::curve_server_t::process_hello (msg_t *msg_)
                               hello_nonce, cn_client, secret_key);
     if (rc != 0) {
         //  Temporary support for security debugging
-        puts ("CURVE I: cannot open client HELLO -- wrong server key?");
+        puts("CURVE I: cannot open client HELLO -- wrong server key?");
         errno = EPROTO;
         return -1;
     }
-
+    
     state = send_welcome;
     return rc;
 }

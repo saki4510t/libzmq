@@ -41,7 +41,7 @@
 /*  Version macros for compile-time API version detection                     */
 #define ZMQ_VERSION_MAJOR 4
 #define ZMQ_VERSION_MINOR 2
-#define ZMQ_VERSION_PATCH 1
+#define ZMQ_VERSION_PATCH 2
 
 #define ZMQ_MAKE_VERSION(major, minor, patch) \
     ((major) * 10000 + (minor) * 100 + (patch))
@@ -110,6 +110,13 @@ extern "C" {
 #   endif
 #else
 #   include <stdint.h>
+#endif
+
+//  32-bit AIX's pollfd struct members are called reqevents and rtnevents so it
+//  defines compatibility macros for them. Need to include that header first to
+//  stop build failures since zmq_pollset_t defines them as events and revents.
+#ifdef ZMQ_HAVE_AIX
+    #include <poll.h>
 #endif
 
 
@@ -206,9 +213,6 @@ ZMQ_EXPORT void zmq_version (int *major, int *minor, int *patch);
 #define ZMQ_THREAD_PRIORITY 3
 #define ZMQ_THREAD_SCHED_POLICY 4
 #define ZMQ_MAX_MSGSZ 5
-//  All options after this is for version 4.3 and still *draft*
-//  Subject to arbitrary change without notice
-#define ZMQ_MSG_T_SIZE 6
 
 /*  Default for new contexts                                                  */
 #define ZMQ_IO_THREADS_DFLT  1
@@ -364,8 +368,6 @@ ZMQ_EXPORT const char *zmq_msg_gets (zmq_msg_t *msg, const char *property);
 #define ZMQ_VMCI_BUFFER_MAX_SIZE 87
 #define ZMQ_VMCI_CONNECT_TIMEOUT 88
 #define ZMQ_USE_FD 89
-//  All options after this is for version 4.3 and still *draft*
-//  Subject to arbitrary change without notice
 
 /*  Message options                                                           */
 #define ZMQ_MORE 1
@@ -558,6 +560,13 @@ ZMQ_EXPORT void zmq_threadclose (void* thread);
 #define ZMQ_GATHER 16
 #define ZMQ_SCATTER 17
 #define ZMQ_DGRAM 18
+
+/*  DRAFT 0MQ socket events and monitoring                                    */
+#define ZMQ_EVENT_HANDSHAKE_FAILED  0x0800
+#define ZMQ_EVENT_HANDSHAKE_SUCCEED 0x1000
+
+/*  DRAFT Context options                                                     */
+#define ZMQ_MSG_T_SIZE 6
 
 /*  DRAFT Socket methods.                                                     */
 ZMQ_EXPORT int zmq_join (void *s, const char *group);
