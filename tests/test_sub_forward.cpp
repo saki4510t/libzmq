@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2007-2016 Contributors as noted in the AUTHORS file
+    Copyright (c) 2007-2017 Contributors as noted in the AUTHORS file
 
     This file is part of libzmq, the ZeroMQ core engine in C++.
 
@@ -31,30 +31,38 @@
 
 int main (void)
 {
-    setup_test_environment();
+    setup_test_environment ();
+    size_t len = MAX_SOCKET_STRING;
+    char endpoint1[MAX_SOCKET_STRING];
+    char endpoint2[MAX_SOCKET_STRING];
     void *ctx = zmq_ctx_new ();
     assert (ctx);
 
     //  First, create an intermediate device
     void *xpub = zmq_socket (ctx, ZMQ_XPUB);
     assert (xpub);
-    int rc = zmq_bind (xpub, "tcp://127.0.0.1:5560");
+    int rc = zmq_bind (xpub, "tcp://127.0.0.1:*");
+    assert (rc == 0);
+    rc = zmq_getsockopt (xpub, ZMQ_LAST_ENDPOINT, endpoint1, &len);
     assert (rc == 0);
     void *xsub = zmq_socket (ctx, ZMQ_XSUB);
     assert (xsub);
-    rc = zmq_bind (xsub, "tcp://127.0.0.1:5561");
+    rc = zmq_bind (xsub, "tcp://127.0.0.1:*");
+    assert (rc == 0);
+    len = MAX_SOCKET_STRING;
+    rc = zmq_getsockopt (xsub, ZMQ_LAST_ENDPOINT, endpoint2, &len);
     assert (rc == 0);
 
     //  Create a publisher
     void *pub = zmq_socket (ctx, ZMQ_PUB);
     assert (pub);
-    rc = zmq_connect (pub, "tcp://127.0.0.1:5561");
+    rc = zmq_connect (pub, endpoint2);
     assert (rc == 0);
 
     //  Create a subscriber
     void *sub = zmq_socket (ctx, ZMQ_SUB);
     assert (sub);
-    rc = zmq_connect (sub, "tcp://127.0.0.1:5560");
+    rc = zmq_connect (sub, endpoint1);
     assert (rc == 0);
 
     //  Subscribe for all messages.
@@ -62,7 +70,7 @@ int main (void)
     assert (rc == 0);
 
     //  Pass the subscription upstream through the device
-    char buff [32];
+    char buff[32];
     rc = zmq_recv (xpub, buff, sizeof (buff), 0);
     assert (rc >= 0);
     rc = zmq_send (xsub, buff, rc, 0);
@@ -97,5 +105,5 @@ int main (void)
     rc = zmq_ctx_term (ctx);
     assert (rc == 0);
 
-    return 0 ;
+    return 0;
 }

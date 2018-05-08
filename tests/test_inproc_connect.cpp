@@ -49,8 +49,8 @@ static void pusher (void *ctx)
 static void simult_conn (void *payload)
 {
     // Pull out arguments - context followed by endpoint string
-    void* ctx   = (void*)((void**)payload)[0];
-    char* endpt = (char*)((void**)payload)[1];
+    void *ctx = (void *) ((void **) payload)[0];
+    char *endpt = (char *) ((void **) payload)[1];
 
     // Connect
     void *connectSocket = zmq_socket (ctx, ZMQ_SUB);
@@ -66,8 +66,8 @@ static void simult_conn (void *payload)
 static void simult_bind (void *payload)
 {
     // Pull out arguments - context followed by endpoint string
-    void* ctx   = (void*)((void**)payload)[0];
-    char* endpt = (char*)((void**)payload)[1];
+    void *ctx = (void *) ((void **) payload)[0];
+    char *endpt = (char *) ((void **) payload)[1];
 
     // Bind
     void *bindSocket = zmq_socket (ctx, ZMQ_PUB);
@@ -223,7 +223,7 @@ void test_connect_before_bind_ctx_term ()
         assert (connectSocket);
 
         char ep[20];
-        sprintf(ep, "inproc://cbbrr%d", i);
+        sprintf (ep, "inproc://cbbrr%d", i);
         int rc = zmq_connect (connectSocket, ep);
         assert (rc == 0);
 
@@ -243,18 +243,17 @@ void test_multiple_connects ()
     assert (ctx);
 
     int rc;
-    void *connectSocket [no_of_connects];
+    void *connectSocket[no_of_connects];
 
     // Connect first
-    for (unsigned int i = 0; i < no_of_connects; ++i)
-    {
-        connectSocket [i] = zmq_socket (ctx, ZMQ_PUSH);
-        assert (connectSocket [i]);
-        rc = zmq_connect (connectSocket [i], "inproc://multiple");
+    for (unsigned int i = 0; i < no_of_connects; ++i) {
+        connectSocket[i] = zmq_socket (ctx, ZMQ_PUSH);
+        assert (connectSocket[i]);
+        rc = zmq_connect (connectSocket[i], "inproc://multiple");
         assert (rc == 0);
 
         // Queue up some data
-        rc = zmq_send_const (connectSocket [i], "foobar", 6, 0);
+        rc = zmq_send_const (connectSocket[i], "foobar", 6, 0);
         assert (rc == 6);
     }
 
@@ -264,8 +263,7 @@ void test_multiple_connects ()
     rc = zmq_bind (bindSocket, "inproc://multiple");
     assert (rc == 0);
 
-    for (unsigned int i = 0; i < no_of_connects; ++i)
-    {
+    for (unsigned int i = 0; i < no_of_connects; ++i) {
         // Read pending message
         zmq_msg_t msg;
         rc = zmq_msg_init (&msg);
@@ -277,9 +275,8 @@ void test_multiple_connects ()
     }
 
     // Cleanup
-    for (unsigned int i = 0; i < no_of_connects; ++i)
-    {
-        rc = zmq_close (connectSocket [i]);
+    for (unsigned int i = 0; i < no_of_connects; ++i) {
+        rc = zmq_close (connectSocket[i]);
         assert (rc == 0);
     }
 
@@ -297,12 +294,11 @@ void test_multiple_threads ()
     assert (ctx);
 
     int rc;
-    void *threads [no_of_threads];
+    void *threads[no_of_threads];
 
     // Connect first
-    for (unsigned int i = 0; i < no_of_threads; ++i)
-    {
-        threads [i] = zmq_threadstart (&pusher, ctx);
+    for (unsigned int i = 0; i < no_of_threads; ++i) {
+        threads[i] = zmq_threadstart (&pusher, ctx);
     }
 
     // Now bind
@@ -311,8 +307,7 @@ void test_multiple_threads ()
     rc = zmq_bind (bindSocket, "inproc://sink");
     assert (rc == 0);
 
-    for (unsigned int i = 0; i < no_of_threads; ++i)
-    {
+    for (unsigned int i = 0; i < no_of_threads; ++i) {
         // Read pending message
         zmq_msg_t msg;
         rc = zmq_msg_init (&msg);
@@ -324,9 +319,8 @@ void test_multiple_threads ()
     }
 
     // Cleanup
-    for (unsigned int i = 0; i < no_of_threads; ++i)
-    {
-        zmq_threadclose (threads [i]);
+    for (unsigned int i = 0; i < no_of_threads; ++i) {
+        zmq_threadclose (threads[i]);
     }
 
     rc = zmq_close (bindSocket);
@@ -342,37 +336,36 @@ void test_simultaneous_connect_bind_threads ()
     void *ctx = zmq_ctx_new ();
     assert (ctx);
 
-    void *threads[no_of_times*2];
+    void *threads[no_of_times * 2];
     void *thr_args[no_of_times][2];
     char endpts[no_of_times][20];
 
     // Set up thread arguments: context followed by endpoint string
-    for (unsigned int i = 0; i < no_of_times; ++i)
-    {
-        thr_args[i][0] = (void*) ctx;
-        thr_args[i][1] = (void*) endpts[i];
+    for (unsigned int i = 0; i < no_of_times; ++i) {
+        thr_args[i][0] = (void *) ctx;
+        thr_args[i][1] = (void *) endpts[i];
         sprintf (endpts[i], "inproc://foo_%d", i);
     }
 
     // Spawn all threads as simultaneously as possible
-    for (unsigned int i = 0; i < no_of_times; ++i)
-    {
-        threads[i*2+0] = zmq_threadstart (&simult_conn, (void*)thr_args[i]);
-        threads[i*2+1] = zmq_threadstart (&simult_bind, (void*)thr_args[i]);
+    for (unsigned int i = 0; i < no_of_times; ++i) {
+        threads[i * 2 + 0] =
+          zmq_threadstart (&simult_conn, (void *) thr_args[i]);
+        threads[i * 2 + 1] =
+          zmq_threadstart (&simult_bind, (void *) thr_args[i]);
     }
 
     // Close all threads
-    for (unsigned int i = 0; i < no_of_times; ++i)
-    {
-        zmq_threadclose (threads[i*2+0]);
-        zmq_threadclose (threads[i*2+1]);
+    for (unsigned int i = 0; i < no_of_times; ++i) {
+        zmq_threadclose (threads[i * 2 + 0]);
+        zmq_threadclose (threads[i * 2 + 1]);
     }
 
     int rc = zmq_ctx_term (ctx);
     assert (rc == 0);
 }
 
-void test_identity ()
+void test_routing_id ()
 {
     //  Create the infrastructure
     void *ctx = zmq_ctx_new ();
@@ -381,13 +374,13 @@ void test_identity ()
     void *sc = zmq_socket (ctx, ZMQ_DEALER);
     assert (sc);
 
-    int rc = zmq_connect (sc, "inproc://identity");
+    int rc = zmq_connect (sc, "inproc://routing_id");
     assert (rc == 0);
 
     void *sb = zmq_socket (ctx, ZMQ_ROUTER);
     assert (sb);
 
-    rc = zmq_bind (sb, "inproc://identity");
+    rc = zmq_bind (sb, "inproc://routing_id");
     assert (rc == 0);
 
     //  Send 2-part message.
@@ -396,7 +389,7 @@ void test_identity ()
     rc = zmq_send (sc, "B", 1, 0);
     assert (rc == 1);
 
-    //  Identity comes first.
+    //  Routing id comes first.
     zmq_msg_t msg;
     rc = zmq_msg_init (&msg);
     assert (rc == 0);
@@ -527,7 +520,7 @@ int main (void)
     test_multiple_connects ();
     test_multiple_threads ();
     test_simultaneous_connect_bind_threads ();
-    test_identity ();
+    test_routing_id ();
     test_connect_only ();
     test_unbind ();
     test_shutdown_during_pend ();

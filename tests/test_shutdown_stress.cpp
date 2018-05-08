@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2007-2016 Contributors as noted in the AUTHORS file
+    Copyright (c) 2007-2017 Contributors as noted in the AUTHORS file
 
     This file is part of libzmq, the ZeroMQ core engine in C++.
 
@@ -31,58 +31,68 @@
 
 #define THREAD_COUNT 100
 
-extern "C"
+struct thread_data
 {
-    static void worker (void *s)
-    {
-        int rc;
+    void *ctx;
+    char endpoint[MAX_SOCKET_STRING];
+};
 
-        rc = zmq_connect (s, "tcp://127.0.0.1:5560");
-        assert (rc == 0);
+extern "C" {
+static void worker (void *data)
+{
+    int rc;
+    void *socket;
+    struct thread_data *tdata = (struct thread_data *) data;
 
-        //  Start closing the socket while the connecting process is underway.
-        rc = zmq_close (s);
-        assert (rc == 0);
-    }
+    socket = zmq_socket (tdata->ctx, ZMQ_SUB);
+    assert (socket);
+
+    rc = zmq_connect (socket, tdata->endpoint);
+    assert (rc == 0);
+
+    //  Start closing the socket while the connecting process is underway.
+    rc = zmq_close (socket);
+    assert (rc == 0);
+}
 }
 
 int main (void)
 {
-    setup_test_environment();
-    void *s1;
-    void *s2;
+    setup_test_environment ();
+    void *socket;
     int i;
     int j;
     int rc;
-    void* threads [THREAD_COUNT];
+    void *threads[THREAD_COUNT];
 
     for (j = 0; j != 10; j++) {
-
         //  Check the shutdown with many parallel I/O threads.
-        void *ctx = zmq_ctx_new ();
-        assert (ctx);
-        zmq_ctx_set (ctx, ZMQ_IO_THREADS, 7);
+        struct thread_data tdata;
+        tdata.ctx = zmq_ctx_new ();
+        assert (tdata.ctx);
+        zmq_ctx_set (tdata.ctx, ZMQ_IO_THREADS, 7);
 
-        s1 = zmq_socket (ctx, ZMQ_PUB);
-        assert (s1);
+        socket = zmq_socket (tdata.ctx, ZMQ_PUB);
+        assert (socket);
 
-        rc = zmq_bind (s1, "tcp://127.0.0.1:5560");
+        rc = zmq_bind (socket, "tcp://127.0.0.1:*");
+        assert (rc == 0);
+        size_t len = MAX_SOCKET_STRING;
+        rc = zmq_getsockopt (socket, ZMQ_LAST_ENDPOINT, tdata.endpoint, &len);
         assert (rc == 0);
 
         for (i = 0; i != THREAD_COUNT; i++) {
-            s2 = zmq_socket (ctx, ZMQ_SUB);
-            assert (s2);
-            threads [i] = zmq_threadstart(&worker, s2);
+            threads[i] = zmq_threadstart (&worker, &tdata);
         }
 
         for (i = 0; i != THREAD_COUNT; i++) {
-            zmq_threadclose(threads [i]);
+            zmq_threadclose (threads[i]);
         }
 
-        rc = zmq_close (s1);
+        rc = zmq_close (socket);
         assert (rc == 0);
 
-        rc = zmq_ctx_term (ctx);
+        rc = zmq_ctx_term (tdata.ctx);
         assert (rc == 0);
     }
 

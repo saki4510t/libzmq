@@ -69,7 +69,6 @@ int zmq::client_t::xrecv (msg_t *msg_)
 
     // Drop any messages with more flag
     while (rc == 0 && msg_->flags () & msg_t::more) {
-
         // drop all frames of the current multi-frame message
         rc = fq.recvpipe (msg_, NULL);
 
@@ -94,7 +93,7 @@ bool zmq::client_t::xhas_out ()
     return lb.has_out ();
 }
 
-zmq::blob_t zmq::client_t::get_credential () const
+const zmq::blob_t &zmq::client_t::get_credential () const
 {
     return fq.get_credential ();
 }

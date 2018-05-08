@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2007-2016 Contributors as noted in the AUTHORS file
+    Copyright (c) 2007-2017 Contributors as noted in the AUTHORS file
 
     This file is part of libzmq, the ZeroMQ core engine in C++.
 
@@ -30,7 +30,7 @@
 #include "testutil.hpp"
 
 const char *bind_address = 0;
-const char *connect_address = 0;
+char connect_address[MAX_SOCKET_STRING];
 
 void test_push_round_robin_out (void *ctx)
 {
@@ -39,18 +39,21 @@ void test_push_round_robin_out (void *ctx)
 
     int rc = zmq_bind (push, bind_address);
     assert (rc == 0);
+    size_t len = MAX_SOCKET_STRING;
+    rc = zmq_getsockopt (push, ZMQ_LAST_ENDPOINT, connect_address, &len);
+    assert (rc == 0);
 
     const size_t services = 5;
-    void *pulls [services];
+    void *pulls[services];
     for (size_t peer = 0; peer < services; ++peer) {
-        pulls [peer] = zmq_socket (ctx, ZMQ_PULL);
-        assert (pulls [peer]);
+        pulls[peer] = zmq_socket (ctx, ZMQ_PULL);
+        assert (pulls[peer]);
 
         int timeout = 250;
-        rc = zmq_setsockopt (pulls [peer], ZMQ_RCVTIMEO, &timeout, sizeof (int));
+        rc = zmq_setsockopt (pulls[peer], ZMQ_RCVTIMEO, &timeout, sizeof (int));
         assert (rc == 0);
 
-        rc = zmq_connect (pulls [peer], connect_address);
+        rc = zmq_connect (pulls[peer], connect_address);
         assert (rc == 0);
     }
 
@@ -65,14 +68,14 @@ void test_push_round_robin_out (void *ctx)
 
     // Expect every PULL got one of each
     for (size_t peer = 0; peer < services; ++peer) {
-        s_recv_seq (pulls [peer], "ABC", SEQ_END);
-        s_recv_seq (pulls [peer], "DEF", SEQ_END);
+        s_recv_seq (pulls[peer], "ABC", SEQ_END);
+        s_recv_seq (pulls[peer], "DEF", SEQ_END);
     }
 
     close_zero_linger (push);
 
     for (size_t peer = 0; peer < services; ++peer)
-        close_zero_linger (pulls [peer]);
+        close_zero_linger (pulls[peer]);
 
     // Wait for disconnects.
     msleep (SETTLE_TIME);
@@ -85,15 +88,17 @@ void test_pull_fair_queue_in (void *ctx)
 
     int rc = zmq_bind (pull, bind_address);
     assert (rc == 0);
+    size_t len = MAX_SOCKET_STRING;
+    rc = zmq_getsockopt (pull, ZMQ_LAST_ENDPOINT, connect_address, &len);
+    assert (rc == 0);
 
     const size_t services = 5;
-    void *pushs [services];
-    for (size_t peer = 0; peer < services; ++peer)
-    {
-        pushs [peer] = zmq_socket (ctx, ZMQ_PUSH);
-        assert (pushs [peer]);
+    void *pushs[services];
+    for (size_t peer = 0; peer < services; ++peer) {
+        pushs[peer] = zmq_socket (ctx, ZMQ_PUSH);
+        assert (pushs[peer]);
 
-        rc = zmq_connect (pushs [peer], connect_address);
+        rc = zmq_connect (pushs[peer], connect_address);
         assert (rc == 0);
     }
 
@@ -105,15 +110,15 @@ void test_pull_fair_queue_in (void *ctx)
 
     // Send 2N messages
     for (size_t peer = 0; peer < services; ++peer) {
-        char *str = strdup("A");
+        char *str = strdup ("A");
 
-        str [0] += peer;
-        s_send_seq (pushs [peer], str, SEQ_END);
-        first_half += str [0];
+        str[0] += peer;
+        s_send_seq (pushs[peer], str, SEQ_END);
+        first_half += str[0];
 
-        str [0] += services;
-        s_send_seq (pushs [peer], str, SEQ_END);
-        second_half += str [0];
+        str[0] += services;
+        s_send_seq (pushs[peer], str, SEQ_END);
+        second_half += str[0];
 
         free (str);
     }
@@ -129,8 +134,8 @@ void test_pull_fair_queue_in (void *ctx)
     for (size_t peer = 0; peer < services; ++peer) {
         rc = zmq_msg_recv (&msg, pull, 0);
         assert (rc == 2);
-        const char *str = (const char *)zmq_msg_data (&msg);
-        first_half -= str [0];
+        const char *str = (const char *) zmq_msg_data (&msg);
+        first_half -= str[0];
     }
     assert (first_half == 0);
 
@@ -138,8 +143,8 @@ void test_pull_fair_queue_in (void *ctx)
     for (size_t peer = 0; peer < services; ++peer) {
         rc = zmq_msg_recv (&msg, pull, 0);
         assert (rc == 2);
-        const char *str = (const char *)zmq_msg_data (&msg);
-        second_half -= str [0];
+        const char *str = (const char *) zmq_msg_data (&msg);
+        second_half -= str[0];
     }
     assert (second_half == 0);
 
@@ -149,7 +154,7 @@ void test_pull_fair_queue_in (void *ctx)
     close_zero_linger (pull);
 
     for (size_t peer = 0; peer < services; ++peer)
-        close_zero_linger (pushs [peer]);
+        close_zero_linger (pushs[peer]);
 
     // Wait for disconnects.
     msleep (SETTLE_TIME);
@@ -187,6 +192,9 @@ void test_destroy_queue_on_disconnect (void *ctx)
 
     rc = zmq_bind (A, bind_address);
     assert (rc == 0);
+    size_t len = MAX_SOCKET_STRING;
+    rc = zmq_getsockopt (A, ZMQ_LAST_ENDPOINT, connect_address, &len);
+    assert (rc == 0);
 
     void *B = zmq_socket (ctx, ZMQ_PULL);
     assert (B);
@@ -211,7 +219,7 @@ void test_destroy_queue_on_disconnect (void *ctx)
     assert (rc == 0);
 
     // Disconnect may take time and need command processing.
-    zmq_pollitem_t poller [2] = { { A, 0, 0, 0 }, { B, 0, 0, 0 } };
+    zmq_pollitem_t poller[2] = {{A, 0, 0, 0}, {B, 0, 0, 0}};
     rc = zmq_poll (poller, 2, 100);
     assert (rc == 0);
     rc = zmq_poll (poller, 2, 100);
@@ -260,16 +268,14 @@ void test_destroy_queue_on_disconnect (void *ctx)
 
 int main (void)
 {
-    setup_test_environment();
+    setup_test_environment ();
     void *ctx = zmq_ctx_new ();
     assert (ctx);
 
-    const char *binds [] = { "inproc://a", "tcp://127.0.0.1:5555" };
-    const char *connects [] = { "inproc://a", "tcp://localhost:5555" };
+    const char *binds[] = {"inproc://a", "tcp://127.0.0.1:*"};
 
     for (int transport = 0; transport < 2; ++transport) {
-        bind_address = binds [transport];
-        connect_address = connects [transport];
+        bind_address = binds[transport];
 
         // PUSH: SHALL route outgoing messages to connected peers using a
         // round-robin strategy.
@@ -293,5 +299,5 @@ int main (void)
     int rc = zmq_ctx_term (ctx);
     assert (rc == 0);
 
-    return 0 ;
+    return 0;
 }

@@ -47,6 +47,7 @@ test_last_endpoint
 test_pair_inproc
 test_pair_ipc
 test_pair_tcp
+test_rebind_ipc
 test_reqrep_inproc
 test_reqrep_ipc
 test_reqrep_tcp
@@ -139,6 +140,7 @@ test_base85
 test_bind_after_connect_tcp
 test_sodium
 test_zmq_poll_fd
+test_reconnect_ivl
 tests/test*.log
 tests/test*.trs
 src/platform.hpp*

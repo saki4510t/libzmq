@@ -36,13 +36,12 @@
 #include "random.hpp"
 #include "likely.hpp"
 
-extern "C"
+extern "C" {
+static void free_id (void *data, void *hint)
 {
-    static void free_id (void *data, void *hint)
-    {
-        LIBZMQ_UNUSED (hint);
-        free (data);
-    }
+    LIBZMQ_UNUSED (hint);
+    free (data);
+}
 }
 
 zmq::req_t::req_t (class ctx_t *parent_, uint32_t tid_, int sid_) :
@@ -75,7 +74,7 @@ int zmq::req_t::xsend (msg_t *msg_)
         message_begins = true;
     }
 
-    //  First part of the request is the request identity.
+    //  First part of the request is the request routing id.
     if (message_begins) {
         reply_pipe = NULL;
 
@@ -89,8 +88,8 @@ int zmq::req_t::xsend (msg_t *msg_)
             *request_id_copy = request_id;
 
             msg_t id;
-            int rc = id.init_data (request_id_copy, sizeof (uint32_t),
-                free_id, NULL);
+            int rc =
+              id.init_data (request_id_copy, sizeof (uint32_t), free_id, NULL);
             errno_assert (rc == 0);
             id.set_flags (msg_t::more);
 
@@ -158,9 +157,10 @@ int zmq::req_t::xrecv (msg_t *msg_)
             if (rc != 0)
                 return rc;
 
-            if (unlikely (!(msg_->flags () & msg_t::more) ||
-                          msg_->size () != sizeof (request_id) ||
-                          *static_cast<uint32_t *> (msg_->data ()) != request_id)) {
+            if (unlikely (!(msg_->flags () & msg_t::more)
+                          || msg_->size () != sizeof (request_id)
+                          || *static_cast<uint32_t *> (msg_->data ())
+                               != request_id)) {
                 //  Skip the remaining frames and try the next message
                 while (msg_->flags () & msg_t::more) {
                     rc = recv_reply_pipe (msg_);
@@ -213,13 +213,15 @@ bool zmq::req_t::xhas_in ()
 
 bool zmq::req_t::xhas_out ()
 {
-    if (receiving_reply)
+    if (receiving_reply && strict)
         return false;
 
     return dealer_t::xhas_out ();
 }
 
-int zmq::req_t::xsetsockopt (int option_, const void *optval_, size_t optvallen_)
+int zmq::req_t::xsetsockopt (int option_,
+                             const void *optval_,
+                             size_t optvallen_)
 {
     bool is_int = (optvallen_ == sizeof (int));
     int value = 0;
@@ -267,9 +269,11 @@ int zmq::req_t::recv_reply_pipe (msg_t *msg_)
     }
 }
 
-zmq::req_session_t::req_session_t (io_thread_t *io_thread_, bool connect_,
-      socket_base_t *socket_, const options_t &options_,
-      address_t *addr_) :
+zmq::req_session_t::req_session_t (io_thread_t *io_thread_,
+                                   bool connect_,
+                                   socket_base_t *socket_,
+                                   const options_t &options_,
+                                   address_t *addr_) :
     session_base_t (io_thread_, connect_, socket_, options_, addr_),
     state (bottom)
 {
@@ -281,36 +285,40 @@ zmq::req_session_t::~req_session_t ()
 
 int zmq::req_session_t::push_msg (msg_t *msg_)
 {
+    //  Ignore commands, they are processed by the engine and should not
+    //  affect the state machine.
+    if (unlikely (msg_->flags () & msg_t::command))
+        return 0;
+
     switch (state) {
-    case bottom:
-        if (msg_->flags () == msg_t::more) {
-            //  In case option ZMQ_CORRELATE is on, allow request_id to be
-            //  transfered as first frame (would be too cumbersome to check
-            //  whether the option is actually on or not).
-            if (msg_->size () == sizeof (uint32_t)) {
-                state = request_id;
-                return session_base_t::push_msg (msg_);
+        case bottom:
+            if (msg_->flags () == msg_t::more) {
+                //  In case option ZMQ_CORRELATE is on, allow request_id to be
+                //  transfered as first frame (would be too cumbersome to check
+                //  whether the option is actually on or not).
+                if (msg_->size () == sizeof (uint32_t)) {
+                    state = request_id;
+                    return session_base_t::push_msg (msg_);
+                } else if (msg_->size () == 0) {
+                    state = body;
+                    return session_base_t::push_msg (msg_);
+                }
             }
-            else if (msg_->size () == 0) {
+            break;
+        case request_id:
+            if (msg_->flags () == msg_t::more && msg_->size () == 0) {
                 state = body;
                 return session_base_t::push_msg (msg_);
             }
-        }
-        break;
-    case request_id:
-        if (msg_->flags () == msg_t::more && msg_->size () == 0) {
-            state = body;
-            return session_base_t::push_msg (msg_);
-        }
-        break;
-    case body:
-        if (msg_->flags () == msg_t::more)
-            return session_base_t::push_msg (msg_);
-        if (msg_->flags () == 0) {
-            state = bottom;
-            return session_base_t::push_msg (msg_);
-        }
-        break;
+            break;
+        case body:
+            if (msg_->flags () == msg_t::more)
+                return session_base_t::push_msg (msg_);
+            if (msg_->flags () == 0) {
+                state = bottom;
+                return session_base_t::push_msg (msg_);
+            }
+            break;
     }
     errno = EFAULT;
     return -1;

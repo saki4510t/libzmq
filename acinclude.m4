@@ -615,6 +615,31 @@ int main (int argc, char *argv [])
 }])
 
 dnl ################################################################################
+dnl # LIBZMQ_CHECK_O_CLOEXEC([action-if-found], [action-if-not-found])          #
+dnl # Check if O_CLOEXEC is supported                                           #
+dnl ################################################################################
+AC_DEFUN([LIBZMQ_CHECK_O_CLOEXEC], [{
+    AC_CACHE_CHECK([whether O_CLOEXEC is supported], [libzmq_cv_o_cloexec],
+        [AC_TRY_RUN([/* O_CLOEXEC test */
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+int main (int argc, char *argv [])
+{
+    int s = open ("/dev/null", O_CLOEXEC | O_RDONLY);
+    return (s == -1);
+}
+        ],
+        [libzmq_cv_o_cloexec="yes"],
+        [libzmq_cv_o_cloexec="no"],
+        [libzmq_cv_o_cloexec="not during cross-compile"]
+        )]
+    )
+    AS_IF([test "x$libzmq_cv_o_cloexec" = "xyes"], [$1], [$2])
+}])
+
+dnl ################################################################################
 dnl # LIBZMQ_CHECK_EVENTFD_CLOEXEC([action-if-found], [action-if-not-found])          #
 dnl # Check if EFD_CLOEXEC is supported                                           #
 dnl ################################################################################
@@ -643,7 +668,7 @@ dnl # Check if compiler supoorts __atomic_Xxx intrinsics                        
 dnl ################################################################################
 AC_DEFUN([LIBZMQ_CHECK_ATOMIC_INTRINSICS], [{
     AC_MSG_CHECKING(whether compiler supports __atomic_Xxx intrinsics)
-    AC_COMPILE_IFELSE([AC_LANG_SOURCE([
+    AC_LINK_IFELSE([AC_LANG_SOURCE([
 /* atomic intrinsics test */
 int v = 0;
 int main (int, char **)
@@ -652,9 +677,51 @@ int main (int, char **)
     return t;
 }
     ])],
-    [AC_MSG_RESULT(yes) ; libzmq_cv_has_atomic_instrisics="yes" ; $1],
-    [AC_MSG_RESULT(no)  ; libzmq_cv_has_atomic_instrisics="no"  ; $2]
+    [AC_MSG_RESULT(yes) ; GCC_ATOMIC_BUILTINS_SUPPORTED=1 libzmq_cv_has_atomic_instrisics="yes" ; $1])
+
+    if test "x$GCC_ATOMIC_BUILTINS_SUPPORTED" != x1; then
+        save_LDFLAGS=$LDFLAGS
+        LDFLAGS="$LDFLAGS -latomic"
+        AC_LINK_IFELSE([AC_LANG_SOURCE([
+        /* atomic intrinsics test */
+        int v = 0;
+        int main (int, char **)
+        {
+            int t = __atomic_add_fetch (&v, 1, __ATOMIC_ACQ_REL);
+            return t;
+        }
+        ])],
+        [AC_MSG_RESULT(yes) ; libzmq_cv_has_atomic_instrisics="yes" LIBS="-latomic" ; $1],
+        [AC_MSG_RESULT(no) ; libzmq_cv_has_atomic_instrisics="no"; $2])
+        LDFLAGS=$save_LDFLAGS
+    fi
+}])
+
+dnl ################################################################################
+dnl # LIBZMQ_CHECK_SO_BINDTODEVICE([action-if-found], [action-if-not-found])          #
+dnl # Check if SO_BINDTODEVICE is supported                                           #
+dnl ################################################################################
+AC_DEFUN([LIBZMQ_CHECK_SO_BINDTODEVICE], [{
+    AC_CACHE_CHECK([whether SO_BINDTODEVICE is supported], [libzmq_cv_so_bindtodevice],
+        [AC_TRY_RUN([/* SO_BINDTODEVICE test */
+#include <sys/socket.h>
+
+int main (int argc, char *argv [])
+{
+/* Actually making the setsockopt() call requires CAP_NET_RAW */
+#ifndef SO_BINDTODEVICE
+    return 1;
+#else
+    return 0;
+#endif
+}
+        ],
+        [libzmq_cv_so_bindtodevice="yes"],
+        [libzmq_cv_so_bindtodevice="no"],
+        [libzmq_cv_so_bindtodevice="not during cross-compile"]
+        )]
     )
+    AS_IF([test "x$libzmq_cv_so_bindtodevice" = "xyes"], [$1], [$2])
 }])
 
 dnl ################################################################################
@@ -802,6 +869,29 @@ int main (int argc, char *argv [])
         )]
     )
     AS_IF([test "x$libzmq_cv_tcp_keepalive" = "xyes"], [$1], [$2])
+}])
+
+dnl ################################################################################
+dnl # LIBZMQ_CHECK_GETRANDOM([action-if-found], [action-if-not-found])  #
+dnl # Checks if getrandom is supported                                  #
+dnl ################################################################################
+AC_DEFUN([LIBZMQ_CHECK_GETRANDOM], [{
+    AC_CACHE_CHECK([whether getrandom is supported], [libzmq_cv_getrandom],
+        [AC_TRY_RUN([/* thread-local storage test */
+#include <sys/random.h>
+
+int main (int argc, char *argv [])
+{
+    char buf[4];
+    getrandom(buf, 4, 0);
+}
+        ],
+        [libzmq_cv_getrandom="yes"],
+        [libzmq_cv_getrandom="no"],
+        [libzmq_cv_getrandom="not during cross-compile"]
+        )]
+    )
+    AS_IF([test "x$libzmq_cv_getrandom" = "xyes"], [$1], [$2])
 }])
 
 dnl ################################################################################

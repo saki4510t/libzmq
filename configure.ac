@@ -41,9 +41,12 @@ AC_SUBST(PACKAGE_VERSION)
 # ZeroMQ version 4.2.1: 6:1:1 (ABI version 5)
 # ZeroMQ version 4.2.2: 6:2:1 (ABI version 5)
 # ZeroMQ version 4.2.3: 6:3:1 (ABI version 5)
+# ZeroMQ version 4.2.4: 6:4:1 (ABI version 5)
+# ZeroMQ version 4.2.5: 6:5:1 (ABI version 5)
+# ZeroMQ version 4.3.1: 6:6:1 (ABI version 5)
 #
 # libzmq -version-info current:revision:age
-LTVER="6:3:1"
+LTVER="6:6:1"
 AC_SUBST(LTVER)
 
 # Take a copy of original flags
@@ -92,19 +95,12 @@ AC_RUN_IFELSE(
         ]],[[
             struct sockaddr_tipc topsrv;
             int sd = socket(AF_TIPC, SOCK_SEQPACKET, 0);
-            if (sd == -EAFNOSUPPORT) {
-                return 1;
-            }
             memset(&topsrv, 0, sizeof(topsrv));
             topsrv.family = AF_TIPC;
             topsrv.addrtype = TIPC_ADDR_NAME;
             topsrv.addr.name.name.type = TIPC_TOP_SRV;
             topsrv.addr.name.name.instance = TIPC_TOP_SRV;
             fcntl(sd, F_SETFL, O_NONBLOCK);
-            if (connect(sd, (struct sockaddr *)&topsrv, sizeof(topsrv)) != 0) {
-                if (errno != EINPROGRESS)
-                    return -1;
-            }
         ]])
     ],
     [libzmq_tipc_support=yes],
@@ -127,9 +123,28 @@ if test "x$zmq_militant" = "xyes"; then
     AC_DEFINE(ZMQ_ACT_MILITANT, 1, [Enable militant API assertions])
 fi
 
+# Memory mis-use detection
+AC_MSG_CHECKING([whether to enable ASan])
+AC_ARG_ENABLE(address-sanitizer, [AS_HELP_STRING([--enable-address-sanitizer=yes/no],
+                  [Build with GCC Address Sanitizer instrumentation])],
+                  [ZMQ_ASAN="$enableval"])
 
-# By default compiling with -Werror except OSX.
-libzmq_werror="yes"
+if test "x${ZMQ_ASAN}" == "xyes"; then
+    CFLAGS="${CFLAGS} -fsanitize=address"
+    CXXFLAGS="${CXXFLAGS} -fsanitize=address"
+
+    AM_CONDITIONAL(ENABLE_ASAN, true)
+    AC_MSG_RESULT([yes])
+else
+    AM_CONDITIONAL(ENABLE_ASAN, false)
+    AC_MSG_RESULT([no])
+fi
+
+# By default compiling with -Werror except OSX and on Solaris when building
+# with libsodium.
+AC_ARG_ENABLE([Werror],
+    [AS_HELP_STRING([--disable-Werror], [disable Werror compiler flag [default=enabled]])],
+    [libzmq_werror=$enableval], [libzmq_werror=yes])
 
 # By default use DSO visibility
 libzmq_dso_visibility="yes"
@@ -159,11 +174,6 @@ case "${host_os}" in
         fi
         AC_DEFINE(ZMQ_HAVE_LINUX, 1, [Have Linux OS])
         libzmq_on_linux="yes"
-
-        # dladdr/dlopen is in libdl on glibc
-        AC_SEARCH_LIBS([dladdr], [dl dld], [], [
-          AC_MSG_ERROR([unable to find the dladdr() function])
-        ])
 
         if test "x$libzmq_tipc_support" = "xyes"; then
             AC_DEFINE(ZMQ_HAVE_TIPC, 1, [Have TIPC support])
@@ -213,6 +223,10 @@ case "${host_os}" in
         AC_LANG_PUSH([C++])
         LIBZMQ_CHECK_LANG_FLAG_PREPEND([-Wno-uninitialized])
         AC_LANG_POP([C++])
+        ;;
+    *haiku*)
+        AC_DEFINE(ZMQ_HAVE_HAIKU, 1, [Have Haiku OS])
+        AC_CHECK_LIB(network, socket)
         ;;
     *netbsd*)
         # Define on NetBSD to enable all library features
@@ -272,6 +286,7 @@ case "${host_os}" in
 
         if test "x$enable_static" = "xyes"; then
             CPPFLAGS="-DZMQ_STATIC $CPPFLAGS"
+            PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE -liphlpapi"
         fi
 	# Set FD_SETSIZE to 16384
 	CPPFLAGS=" -DFD_SETSIZE=16384 $CPPFLAGS"
@@ -426,10 +441,14 @@ AC_ARG_WITH([libgssapi_krb5], [AS_HELP_STRING([--with-libgssapi_krb5],
 
 # conditionally require libgssapi_krb5
 if test "x$require_libgssapi_krb5_ext" != "xno"; then
-    AC_CHECK_HEADERS(gssapi/gssapi_generic.h)
-    AC_SEARCH_LIBS([gss_init_sec_context], [gssapi_krb5 gssapi],,
-        AC_MSG_ERROR(libgssapi_krb5 is needed for GSSAPI security))
+    PKG_CHECK_MODULES([gssapi_krb5], [krb5-gssapi], [], [
+        AC_CHECK_HEADERS(gssapi/gssapi_generic.h)
+        AC_SEARCH_LIBS([gss_init_sec_context], [gssapi_krb5 gssapi],
+            AC_DEFINE(HAVE_LIBGSSAPI_KRB5, [1], [Enabled GSSAPI security]),
+            AC_MSG_ERROR(libgssapi_krb5 is needed for GSSAPI security))
+    ])
 fi
+AM_CONDITIONAL(BUILD_GSSAPI, test "x$require_libgssapi_krb5_ext" != "xno")
 
 # Select curve encryption library, defaults to tweetnacl
 # To use libsodium instead, use --with-libsodium (must be installed)
@@ -480,6 +499,7 @@ AM_CONDITIONAL(ENABLE_CURVE_KEYGEN, test "x$enable_curve" = "xyes" -a "x$zmq_ena
 
 AM_CONDITIONAL(USE_LIBSODIUM, test "$curve_library" = "libsodium")
 AM_CONDITIONAL(USE_TWEETNACL, test "$curve_library" = "tweetnacl")
+AM_CONDITIONAL(HAVE_CURVE, test "x$curve_library" != "x")
 
 # build using pgm
 have_pgm_library="no"
@@ -516,19 +536,29 @@ AC_ARG_WITH([norm],
 AC_MSG_CHECKING("with_norm_ext = ${with_norm_ext}")
 
 if test "x$with_norm_ext" != "xno"; then
-    AC_MSG_RESULT([yes])
-    AC_DEFINE(ZMQ_HAVE_NORM, 1, [Have NORM protocol extension])
+    PKG_CHECK_MODULES([norm], [norm], [ have_norm_library="yes" ], [
+        AC_MSG_RESULT([yes])
 
-    if test "x$with_norm_ext" != "xyes"; then
-        norm_path="${with_norm_ext}"
-        LIBZMQ_EXTRA_CXXFLAGS="-I${norm_path}/include ${LIBZMQ_EXTRA_CXXFLAGS}"
-        LIBZMQ_EXTRA_LDFLAGS="-L${norm_path}/lib ${LIBZMQ_EXTRA_LDFLAGS}"
-    fi
-    LIBS="-L${norm_path}/lib -lnorm $LIBS"
-    PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE -lnorm"
+        norm_LIBS=""
+        norm_CFLAGS=""
+        if test "x$with_norm_ext" != "xyes"; then
+            norm_path="${with_norm_ext}"
+            norm_CFLAGS="${norm_CFLAGS} -I${norm_path}/include"
+            norm_LIBS="${norm_LIBS} -L${norm_path}/lib"
+        fi
+        norm_LIBS="${norm_LIBS} -lnorm"
+        have_norm_library="yes"
+        AC_SUBST(norm_LIBS)
+        AC_SUBST(norm_CFLAGS)
+    ])
 else
     AC_MSG_RESULT([no])
 fi
+if test "x$have_norm_library" = "xyes"; then
+    AC_DEFINE(ZMQ_HAVE_NORM, [1], [Have NORM protocol extension])
+    PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE $norm_LIBS"
+fi
+AM_CONDITIONAL(HAVE_NORM, test "x$have_norm_library" = "xyes")
 
 # build using vmci
 have_vmci_library="no"
@@ -585,7 +615,7 @@ AC_LANG_POP([C++])
 
 # Checks for library functions.
 AC_TYPE_SIGNAL
-AC_CHECK_FUNCS(perror gettimeofday clock_gettime memset socket getifaddrs freeifaddrs fork posix_memalign mkdtemp)
+AC_CHECK_FUNCS(perror gettimeofday clock_gettime memset socket getifaddrs freeifaddrs fork posix_memalign mkdtemp accept4)
 AC_CHECK_HEADERS([alloca.h])
 
 # pthread_setname is non-posix, and there are at least 4 different implementations
@@ -638,10 +668,38 @@ AC_COMPILE_IFELSE(
 		AC_MSG_RESULT([no])
 ])
 
+
+# pthread_setaffinity_np is non-posix:
+AC_MSG_CHECKING([whether pthread_setaffinity_np() exists])
+AC_COMPILE_IFELSE(
+	[AC_LANG_PROGRAM(
+		[[#include <pthread.h>]],
+		[[cpu_set_t test; pthread_setaffinity_np (pthread_self(), sizeof(cpu_set_t), &test); return 0;]])
+	],[
+		AC_MSG_RESULT([yes])
+		AC_DEFINE(ZMQ_HAVE_PTHREAD_SET_AFFINITY, [1],
+		    [Whether pthread_setaffinity_np() exists])
+	],[
+		AC_MSG_RESULT([no])
+])
+
+
 LIBZMQ_CHECK_SOCK_CLOEXEC([
     AC_DEFINE([ZMQ_HAVE_SOCK_CLOEXEC],
         [1],
         [Whether SOCK_CLOEXEC is defined and functioning.])
+    ])
+
+LIBZMQ_CHECK_O_CLOEXEC([
+    AC_DEFINE([ZMQ_HAVE_O_CLOEXEC],
+        [1],
+        [Whether O_CLOEXEC is defined and functioning.])
+    ])
+
+LIBZMQ_CHECK_SO_BINDTODEVICE([
+    AC_DEFINE([ZMQ_HAVE_SO_BINDTODEVICE],
+        [1],
+        [Whether SO_BINDTODEVICE is supported.])
     ])
 
 # TCP keep-alives Checks.
@@ -675,6 +733,12 @@ LIBZMQ_CHECK_TCP_KEEPALIVE([
         [Whether TCP_KEEPALIVE is supported.])
     ])
 
+LIBZMQ_CHECK_GETRANDOM([
+    AC_DEFINE([ZMQ_HAVE_GETRANDOM],
+        [1],
+        [Whether getrandom is supported.])
+    ])
+
 AM_CONDITIONAL(HAVE_FORK, test "x$ac_cv_func_fork" = "xyes")
 
 if test "x$cross_compiling" = "xyes"; then
@@ -703,16 +767,44 @@ else
     AC_SUBST(pkg_config_defines, "")
 fi
 
-PKG_CHECK_MODULES(LIBUNWIND, [libunwind],
-    [
-        AC_DEFINE(HAVE_LIBUNWIND, 1, [The libunwind library is to be used])
-        AC_SUBST([LIBUNWIND_CFLAGS])
-        AC_SUBST([LIBUNWIND_LIBS])
-        AC_CHECK_LIB([dl], [dladdr])
-    ],
-    [
-        AC_MSG_WARN([Cannot find libunwind])
-    ])
+AC_ARG_ENABLE([libunwind],
+    [AS_HELP_STRING([--enable-libunwind],
+        [enable libunwind [default=auto]])],
+    [enable_libunwind=$enableval],
+    [enable_libunwind="auto"])
+
+if test "x$enable_libunwind" != "xno"; then
+    PKG_CHECK_MODULES(LIBUNWIND, [libunwind],
+        [
+            AC_DEFINE(HAVE_LIBUNWIND, 1, [The libunwind library is to be used])
+            AC_SUBST([LIBUNWIND_CFLAGS])
+            AC_SUBST([LIBUNWIND_LIBS])
+            AC_SEARCH_LIBS([dladdr], [dl dld])
+        ],
+        [
+            if test "x$enable_libunwind" = "xyes"; then
+                AC_MSG_ERROR([Cannot find libunwind])
+            else
+                AC_MSG_WARN([Cannot find libunwind])
+            fi
+        ])
+fi
+
+# See if clang-format is in PATH; the result unblocks the relevant recipes
+WITH_CLANG_FORMAT=""
+AS_IF([test x"$CLANG_FORMAT" = x],
+    [AC_PATH_PROG([CLANG_FORMAT], [clang-format], [])],
+    [AC_CHECK_PROG([WITH_CLANG_FORMAT], [$CLANG_FORMAT], [true], [fail])])
+AS_IF([test x"$CLANG_FORMAT" != x && test x"$WITH_CLANG_FORMAT" = x],
+    [AS_IF([test -x "$CLANG_FORMAT"],
+        [WITH_CLANG_FORMAT=true],
+        [AC_CHECK_PROG([WITH_CLANG_FORMAT], [$CLANG_FORMAT], [true], [false])])])
+AS_IF([test "$WITH_CLANG_FORMAT" = fail],
+    [AC_MSG_ERROR([Caller explicitly referenced CLANG_FORMAT=$CLANG_FORMAT which was not found])])
+AM_CONDITIONAL([WITH_CLANG_FORMAT], [$WITH_CLANG_FORMAT])
+
+# unittests will not build without the static libzmq.a
+AM_CONDITIONAL(ENABLE_STATIC, test "x$enable_static" = "xyes")
 
 # Subst LIBZMQ_EXTRA_CFLAGS & CXXFLAGS & LDFLAGS
 AC_SUBST(LIBZMQ_EXTRA_CFLAGS)

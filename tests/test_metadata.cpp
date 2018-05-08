@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2007-2016 Contributors as noted in the AUTHORS file
+    Copyright (c) 2007-2017 Contributors as noted in the AUTHORS file
 
     This file is part of libzmq, the ZeroMQ core engine in C++.
 
@@ -29,24 +29,21 @@
 
 #include "testutil.hpp"
 
-static void
-zap_handler (void *handler)
+static void zap_handler (void *handler)
 {
-    uint8_t metadata [] = {
-        5, 'H', 'e', 'l', 'l', 'o',
-        0, 0, 0, 5, 'W', 'o', 'r', 'l', 'd'
-    };
+    uint8_t metadata[] = {5, 'H', 'e', 'l', 'l', 'o', 0,  0,
+                          0, 5,   'W', 'o', 'r', 'l', 'd'};
 
     //  Process ZAP requests forever
     while (true) {
         char *version = s_recv (handler);
         if (!version)
-            break;          //  Terminating
+            break; //  Terminating
 
         char *sequence = s_recv (handler);
         char *domain = s_recv (handler);
         char *address = s_recv (handler);
-        char *identity = s_recv (handler);
+        char *routing_id = s_recv (handler);
         char *mechanism = s_recv (handler);
 
         assert (streq (version, "1.0"));
@@ -59,18 +56,17 @@ zap_handler (void *handler)
             s_sendmore (handler, "OK");
             s_sendmore (handler, "anonymous");
             zmq_send (handler, metadata, sizeof (metadata), 0);
-        }
-        else {
+        } else {
             s_sendmore (handler, "400");
             s_sendmore (handler, "BAD DOMAIN");
             s_sendmore (handler, "");
-            s_send     (handler, "");
+            s_send (handler, "");
         }
         free (version);
         free (sequence);
         free (domain);
         free (address);
-        free (identity);
+        free (routing_id);
         free (mechanism);
     }
     close_zero_linger (handler);
@@ -78,7 +74,9 @@ zap_handler (void *handler)
 
 int main (void)
 {
-    setup_test_environment();
+    setup_test_environment ();
+    size_t len = MAX_SOCKET_STRING;
+    char my_endpoint[MAX_SOCKET_STRING];
     void *ctx = zmq_ctx_new ();
     assert (ctx);
 
@@ -97,9 +95,11 @@ int main (void)
     assert (client);
     rc = zmq_setsockopt (server, ZMQ_ZAP_DOMAIN, "DOMAIN", 6);
     assert (rc == 0);
-    rc = zmq_bind (server, "tcp://127.0.0.1:9001");
+    rc = zmq_bind (server, "tcp://127.0.0.1:*");
     assert (rc == 0);
-    rc = zmq_connect (client, "tcp://127.0.0.1:9001");
+    rc = zmq_getsockopt (server, ZMQ_LAST_ENDPOINT, my_endpoint, &len);
+    assert (rc == 0);
+    rc = zmq_connect (client, my_endpoint);
     assert (rc == 0);
 
     s_send (client, "This is a message");

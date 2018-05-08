@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2007-2016 Contributors as noted in the AUTHORS file
+    Copyright (c) 2007-2017 Contributors as noted in the AUTHORS file
 
     This file is part of libzmq, the ZeroMQ core engine in C++.
 
@@ -54,9 +54,21 @@ static void bounce (void *socket)
     } while (more);
 }
 
+static int get_events (void *socket)
+{
+    int rc;
+    int events;
+    size_t events_size = sizeof (events);
+    rc = zmq_getsockopt (socket, ZMQ_EVENTS, &events, &events_size);
+    assert (rc == 0);
+    return events;
+}
+
 int main (void)
 {
     setup_test_environment ();
+    size_t len = MAX_SOCKET_STRING;
+    char my_endpoint[MAX_SOCKET_STRING];
     void *ctx = zmq_ctx_new ();
     assert (ctx);
 
@@ -70,20 +82,22 @@ int main (void)
     rc = zmq_setsockopt (req, ZMQ_REQ_CORRELATE, &enabled, sizeof (int));
     assert (rc == 0);
 
-    rc = zmq_bind (req, "tcp://127.0.0.1:5555");
+    rc = zmq_bind (req, "tcp://127.0.0.1:*");
+    assert (rc == 0);
+    rc = zmq_getsockopt (req, ZMQ_LAST_ENDPOINT, my_endpoint, &len);
     assert (rc == 0);
 
     const size_t services = 5;
-    void *rep [services];
+    void *rep[services];
     for (size_t peer = 0; peer < services; peer++) {
-        rep [peer] = zmq_socket (ctx, ZMQ_REP);
-        assert (rep [peer]);
+        rep[peer] = zmq_socket (ctx, ZMQ_REP);
+        assert (rep[peer]);
 
         int timeout = 500;
-        rc = zmq_setsockopt (rep [peer], ZMQ_RCVTIMEO, &timeout, sizeof (int));
+        rc = zmq_setsockopt (rep[peer], ZMQ_RCVTIMEO, &timeout, sizeof (int));
         assert (rc == 0);
 
-        rc = zmq_connect (rep [peer], "tcp://localhost:5555");
+        rc = zmq_connect (rep[peer], my_endpoint);
         assert (rc == 0);
     }
     //  We have to give the connects time to finish otherwise the requests
@@ -93,26 +107,34 @@ int main (void)
 
     //  Case 1: Second send() before a reply arrives in a pipe.
 
+    int events = get_events (req);
+    assert (events == ZMQ_POLLOUT);
+
     //  Send a request, ensure it arrives, don't send a reply
     s_send_seq (req, "A", "B", SEQ_END);
-    s_recv_seq (rep [0], "A", "B", SEQ_END);
+    s_recv_seq (rep[0], "A", "B", SEQ_END);
+
+    events = get_events (req);
+    assert (events == ZMQ_POLLOUT);
 
     //  Send another request on the REQ socket
     s_send_seq (req, "C", "D", SEQ_END);
-    s_recv_seq (rep [1], "C", "D", SEQ_END);
+    s_recv_seq (rep[1], "C", "D", SEQ_END);
+
+    events = get_events (req);
+    assert (events == ZMQ_POLLOUT);
 
     //  Send a reply to the first request - that should be discarded by the REQ
-    s_send_seq (rep [0], "WRONG", SEQ_END);
+    s_send_seq (rep[0], "WRONG", SEQ_END);
 
     //  Send the expected reply
-    s_send_seq (rep [1], "OK", SEQ_END);
+    s_send_seq (rep[1], "OK", SEQ_END);
     s_recv_seq (req, "OK", SEQ_END);
-
 
     //  Another standard req-rep cycle, just to check
     s_send_seq (req, "E", SEQ_END);
-    s_recv_seq (rep [2], "E", SEQ_END);
-    s_send_seq (rep [2], "F", "G", SEQ_END);
+    s_recv_seq (rep[2], "E", SEQ_END);
+    s_send_seq (rep[2], "F", "G", SEQ_END);
     s_recv_seq (req, "F", "G", SEQ_END);
 
 
@@ -120,18 +142,18 @@ int main (void)
 
     //  Send a request, ensure it arrives, send a reply
     s_send_seq (req, "H", SEQ_END);
-    s_recv_seq (rep [3], "H", SEQ_END);
-    s_send_seq (rep [3], "BAD", SEQ_END);
+    s_recv_seq (rep[3], "H", SEQ_END);
+    s_send_seq (rep[3], "BAD", SEQ_END);
 
     //  Wait for message to be there.
     msleep (SETTLE_TIME);
 
     //  Without receiving that reply, send another request on the REQ socket
     s_send_seq (req, "I", SEQ_END);
-    s_recv_seq (rep [4], "I", SEQ_END);
+    s_recv_seq (rep[4], "I", SEQ_END);
 
     //  Send the expected reply
-    s_send_seq (rep [4], "GOOD", SEQ_END);
+    s_send_seq (rep[4], "GOOD", SEQ_END);
     s_recv_seq (req, "GOOD", SEQ_END);
 
     //  Case 3: Check issue #1690. Two send() in a row should not close the
@@ -139,11 +161,11 @@ int main (void)
     //  closed after executing Case 1. So rep[0] should be the next to receive,
     //  not rep[1].
     s_send_seq (req, "J", SEQ_END);
-    s_recv_seq (rep [0], "J", SEQ_END);
+    s_recv_seq (rep[0], "J", SEQ_END);
 
     close_zero_linger (req);
     for (size_t peer = 0; peer < services; peer++)
-        close_zero_linger (rep [peer]);
+        close_zero_linger (rep[peer]);
 
     //  Wait for disconnects.
     msleep (SETTLE_TIME);
@@ -162,7 +184,7 @@ int main (void)
     rc = zmq_setsockopt (req, ZMQ_REQ_CORRELATE, &enabled, sizeof (int));
     assert (rc == 0);
 
-    rc = zmq_connect (req, "tcp://localhost:5555");
+    rc = zmq_connect (req, ENDPOINT_0);
     assert (rc == 0);
 
     //  Setup ROUTER socket as server but do not bind it just yet
@@ -174,7 +196,7 @@ int main (void)
     s_send_seq (req, "TO_BE_ANSWERED", SEQ_END);
 
     //  Bind server allowing it to receive messages
-    rc = zmq_bind (router, "tcp://127.0.0.1:5555");
+    rc = zmq_bind (router, ENDPOINT_0);
     assert (rc == 0);
 
     //  Read the two messages and send them back as is
@@ -194,5 +216,5 @@ int main (void)
     rc = zmq_ctx_term (ctx);
     assert (rc == 0);
 
-    return 0 ;
+    return 0;
 }

@@ -65,7 +65,7 @@ void zmq::pair_t::xpipe_terminated (pipe_t *pipe_)
 {
     if (pipe_ == pipe) {
         if (last_in == pipe) {
-            saved_credential = last_in->get_credential ();
+            saved_credential.set_deep_copy (last_in->get_credential ());
             last_in = NULL;
         }
         pipe = NULL;
@@ -108,7 +108,6 @@ int zmq::pair_t::xrecv (msg_t *msg_)
     errno_assert (rc == 0);
 
     if (!pipe || !pipe->read (msg_)) {
-
         //  Initialise the output parameter to be a 0-byte message.
         rc = msg_->init ();
         errno_assert (rc == 0);
@@ -136,7 +135,7 @@ bool zmq::pair_t::xhas_out ()
     return pipe->check_write ();
 }
 
-zmq::blob_t zmq::pair_t::get_credential () const
+const zmq::blob_t &zmq::pair_t::get_credential () const
 {
-    return last_in? last_in->get_credential (): saved_credential;
+    return last_in ? last_in->get_credential () : saved_credential;
 }

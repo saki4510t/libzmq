@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2007-2016 Contributors as noted in the AUTHORS file
+    Copyright (c) 2007-2017 Contributors as noted in the AUTHORS file
 
     This file is part of libzmq, the ZeroMQ core engine in C++.
 
@@ -29,22 +29,44 @@
 
 #include "testutil.hpp"
 
-int main (void)
+typedef void (*extra_func_t) (void *socket);
+
+#ifdef ZMQ_BUILD_DRAFT
+void set_sockopt_fastpath (void *socket)
 {
-    setup_test_environment();
+    int value = 1;
+    int rc =
+      zmq_setsockopt (socket, ZMQ_LOOPBACK_FASTPATH, &value, sizeof value);
+    assert (rc == 0);
+}
+#endif
+
+void test_pair_tcp (extra_func_t extra_func = NULL)
+{
+    size_t len = MAX_SOCKET_STRING;
+    char my_endpoint[MAX_SOCKET_STRING];
     void *ctx = zmq_ctx_new ();
     assert (ctx);
 
     void *sb = zmq_socket (ctx, ZMQ_PAIR);
     assert (sb);
-    int rc = zmq_bind (sb, "tcp://127.0.0.1:5560");
+
+    if (extra_func)
+        extra_func (sb);
+
+    int rc = zmq_bind (sb, "tcp://127.0.0.1:*");
+    assert (rc == 0);
+    rc = zmq_getsockopt (sb, ZMQ_LAST_ENDPOINT, my_endpoint, &len);
     assert (rc == 0);
 
     void *sc = zmq_socket (ctx, ZMQ_PAIR);
     assert (sc);
-    rc = zmq_connect (sc, "tcp://127.0.0.1:5560");
+    if (extra_func)
+        extra_func (sc);
+
+    rc = zmq_connect (sc, my_endpoint);
     assert (rc == 0);
-    
+
     bounce (sb, sc);
 
     rc = zmq_close (sc);
@@ -55,6 +77,16 @@ int main (void)
 
     rc = zmq_ctx_term (ctx);
     assert (rc == 0);
+}
 
-    return 0 ;
+int main (void)
+{
+    setup_test_environment ();
+
+    test_pair_tcp ();
+#ifdef ZMQ_BUILD_DRAFT
+    test_pair_tcp (set_sockopt_fastpath);
+#endif
+
+    return 0;
 }

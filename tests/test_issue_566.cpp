@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2007-2016 Contributors as noted in the AUTHORS file
+    Copyright (c) 2007-2017 Contributors as noted in the AUTHORS file
 
     This file is part of libzmq, the ZeroMQ core engine in C++.
 
@@ -36,34 +36,38 @@
 
 int main (void)
 {
-    setup_test_environment();
-    
+    setup_test_environment ();
+
+    size_t len = MAX_SOCKET_STRING;
+    char my_endpoint[MAX_SOCKET_STRING];
     void *ctx1 = zmq_ctx_new ();
     assert (ctx1);
 
     void *ctx2 = zmq_ctx_new ();
     assert (ctx2);
 
-    void *router = zmq_socket (ctx1, ZMQ_ROUTER);    
+    void *router = zmq_socket (ctx1, ZMQ_ROUTER);
     int on = 1;
     int rc = zmq_setsockopt (router, ZMQ_ROUTER_MANDATORY, &on, sizeof (on));
     assert (rc == 0);
-    rc = zmq_bind (router, "tcp://127.0.0.1:5555");
+    rc = zmq_bind (router, "tcp://127.0.0.1:*");
     assert (rc != -1);
- 
+    rc = zmq_getsockopt (router, ZMQ_LAST_ENDPOINT, my_endpoint, &len);
+    assert (rc == 0);
+
     //  Repeat often enough to be sure this works as it should
     for (int cycle = 0; cycle < 100; cycle++) {
-        //  Create dealer with unique explicit identity
+        //  Create dealer with unique explicit routing id
         //  We assume the router learns this out-of-band
         void *dealer = zmq_socket (ctx2, ZMQ_DEALER);
-        char identity [10];
-        sprintf (identity, "%09d", cycle);
-        rc = zmq_setsockopt (dealer, ZMQ_IDENTITY, identity, 10);
+        char routing_id[10];
+        sprintf (routing_id, "%09d", cycle);
+        rc = zmq_setsockopt (dealer, ZMQ_ROUTING_ID, routing_id, 10);
         assert (rc == 0);
         int rcvtimeo = 1000;
         rc = zmq_setsockopt (dealer, ZMQ_RCVTIMEO, &rcvtimeo, sizeof (int));
         assert (rc == 0);
-        rc = zmq_connect (dealer, "tcp://127.0.0.1:5555");
+        rc = zmq_connect (dealer, my_endpoint);
         assert (rc == 0);
 
         //  Router will try to send to dealer, at short intervals.
@@ -73,7 +77,7 @@ int main (void)
         //  a very slow system).
         for (int attempt = 0; attempt < 500; attempt++) {
             zmq_poll (0, 0, 2);
-            rc = zmq_send (router, identity, 10, ZMQ_SNDMORE);
+            rc = zmq_send (router, routing_id, 10, ZMQ_SNDMORE);
             if (rc == -1 && errno == EHOSTUNREACH)
                 continue;
             assert (rc == 10);
@@ -81,7 +85,7 @@ int main (void)
             assert (rc == 5);
             break;
         }
-        uint8_t buffer [5];
+        uint8_t buffer[5];
         rc = zmq_recv (dealer, buffer, 5, 0);
         assert (rc == 5);
         assert (memcmp (buffer, "HELLO", 5) == 0);

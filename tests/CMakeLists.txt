@@ -34,7 +34,7 @@ set(tests
         test_ctx_destroy
         test_security_null
         test_security_plain
-        test_security_curve
+        test_security_zap
         test_iov
         test_spec_req
         test_spec_rep
@@ -65,15 +65,23 @@ set(tests
         test_stream_timeout
         test_xpub_manual
         test_xpub_welcome_msg
+        test_xpub_verbose
         test_base85
         test_bind_after_connect_tcp
         test_sodium
+        test_monitor
+		test_socket_null
+	test_reconnect_ivl
 )
+if(ZMQ_HAVE_CURVE)
+  list(APPEND tests 
+          test_security_curve)
+endif()
 if(NOT WIN32)
   list(APPEND tests
-          test_monitor
           test_ipc_wildcard
           test_pair_ipc
+          test_rebind_ipc
           test_reqrep_ipc
           test_proxy
           test_proxy_single_socket
@@ -95,6 +103,7 @@ if(NOT WIN32)
     )
     if(ZMQ_HAVE_TIPC)
       list(APPEND tests
+            test_address_tipc
             test_pair_tipc
             test_reqrep_device_tipc
             test_reqrep_tipc
@@ -123,9 +132,9 @@ IF (ENABLE_DRAFTS)
         test_client_server
         test_timers
         test_radio_dish
-        test_udp
         test_scatter_gather
         test_dgram
+        test_app_meta
     )
 ENDIF (ENABLE_DRAFTS)
 
@@ -134,15 +143,47 @@ if(WIN32)
     add_definitions(-DZMQ_CUSTOM_PLATFORM_HPP)
     add_definitions(-D_WINSOCK_DEPRECATED_NO_WARNINGS)
     # Same name on 64bit systems
-    link_libraries(Ws2_32.lib)
+    link_libraries(ws2_32.lib)
 endif()
 
+add_library (unity 
+    STATIC 
+    "${CMAKE_CURRENT_LIST_DIR}/../external/unity/unity.c" 
+    "${CMAKE_CURRENT_LIST_DIR}/../external/unity/unity.h" 
+    "${CMAKE_CURRENT_LIST_DIR}/../external/unity/unity_internals.h")
+set_target_properties (unity PROPERTIES
+    PUBLIC_HEADER "${CMAKE_CURRENT_LIST_DIR}/../external/unity/unity.h")
+target_compile_definitions (unity PUBLIC "UNITY_USE_COMMAND_LINE_ARGS" "UNITY_EXCLUDE_FLOAT")
+target_include_directories (unity
+    PUBLIC "${CMAKE_CURRENT_LIST_DIR}/../external/unity")
+
+IF (MSVC_VERSION LESS 1700)
+    SET_SOURCE_FILES_PROPERTIES("${CMAKE_CURRENT_LIST_DIR}/../external/unity/unity.c" PROPERTIES LANGUAGE CXX)
+ENDIF()
+
 # add library and include dirs for all targets
-link_libraries(libzmq ${OPTIONAL_LIBRARIES})
-include_directories("${CMAKE_SOURCE_DIR}/../include")
+if (BUILD_SHARED)
+link_libraries(libzmq ${OPTIONAL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} unity)
+else ()
+link_libraries(libzmq-static ${OPTIONAL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} unity)
+endif ()
+include_directories("${CMAKE_SOURCE_DIR}/../include" "${CMAKE_BINARY_DIR}")
 
 foreach(test ${tests})
-  add_executable(${test} ${test}.cpp)
+  # target_sources not supported before CMake 3.1
+  if (ZMQ_HAVE_CURVE AND ${test} MATCHES test_security_curve)
+    add_executable(${test} ${test}.cpp
+        "../src/tweetnacl.c"
+        "../src/err.cpp"
+        "../src/random.cpp"
+        "../src/clock.cpp"
+        "testutil_security.hpp")
+  elseif (${test} MATCHES test_security_zap)
+    add_executable(${test} ${test}.cpp
+        "testutil_security.hpp")
+  else ()
+    add_executable(${test} ${test}.cpp "testutil.hpp" "testutil_unity.hpp")
+  endif ()
   if(WIN32)
     # This is the output for Debug dynamic builds on Visual Studio 6.0
     # You should provide the correct directory, don't know how to do it automatically
@@ -167,7 +208,27 @@ foreach(test ${tests})
     add_test(NAME ${test} COMMAND ${test})
   endif()
   set_tests_properties(${test} PROPERTIES TIMEOUT 10)
+  set_tests_properties(${test} PROPERTIES SKIP_RETURN_CODE 77)
 endforeach()
+
+#override timeout for these tests
+if(ZMQ_HAVE_CURVE)
+  set_tests_properties(test_security_curve PROPERTIES TIMEOUT 60)
+endif()
+set_tests_properties(test_heartbeats PROPERTIES TIMEOUT 60)
+
+if(WIN32 AND ${POLLER} MATCHES "poll")
+  set_tests_properties(test_many_sockets PROPERTIES TIMEOUT 30)
+  set_tests_properties(test_immediate PROPERTIES TIMEOUT 30)
+endif()
+
+#add additional required flags
+#ZMQ_USE_TWEETNACL will already be defined when not using sodium
+if(ZMQ_HAVE_CURVE AND NOT ZMQ_USE_TWEETNACL)
+  target_compile_definitions(test_security_curve PRIVATE "-DZMQ_USE_TWEETNACL")
+endif()
+
+set_tests_properties(test_security_zap PROPERTIES TIMEOUT 60)
 
 #Check whether all tests in the current folder are present
 file(READ "${CMAKE_CURRENT_LIST_FILE}" CURRENT_LIST_FILE_CONTENT)

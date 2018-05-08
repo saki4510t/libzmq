@@ -31,20 +31,20 @@
 
 int main (void)
 {
-    setup_test_environment();
+    setup_test_environment ();
     void *ctx = zmq_ctx_new ();
     assert (ctx);
 
     void *sb = zmq_socket (ctx, ZMQ_PAIR);
     assert (sb);
-    int rc = zmq_bind (sb, "ipc:///tmp/tester");
+    int rc = zmq_bind (sb, "ipc:///tmp/test_pair_ipc");
     assert (rc == 0);
 
     void *sc = zmq_socket (ctx, ZMQ_PAIR);
     assert (sc);
-    rc = zmq_connect (sc, "ipc:///tmp/tester");
+    rc = zmq_connect (sc, "ipc:///tmp/test_pair_ipc");
     assert (rc == 0);
-    
+
     bounce (sb, sc);
 
     rc = zmq_close (sc);
@@ -56,5 +56,5 @@ int main (void)
     rc = zmq_ctx_term (ctx);
     assert (rc == 0);
 
-    return 0 ;
+    return 0;
 }

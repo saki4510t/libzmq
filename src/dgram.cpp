@@ -53,7 +53,7 @@ zmq::dgram_t::~dgram_t ()
 
 void zmq::dgram_t::xattach_pipe (pipe_t *pipe_, bool subscribe_to_all_)
 {
-    LIBZMQ_UNUSED(subscribe_to_all_);
+    LIBZMQ_UNUSED (subscribe_to_all_);
 
     zmq_assert (pipe_);
 
@@ -69,7 +69,7 @@ void zmq::dgram_t::xpipe_terminated (pipe_t *pipe_)
 {
     if (pipe_ == pipe) {
         if (last_in == pipe) {
-            saved_credential = last_in->get_credential ();
+            saved_credential.set_deep_copy (last_in->get_credential ());
             last_in = NULL;
         }
         pipe = NULL;
@@ -107,9 +107,7 @@ int zmq::dgram_t::xsend (msg_t *msg_)
 
         //  Expect one more message frame.
         more_out = true;
-    }
-    else {
-
+    } else {
         //  dgram messages are two part only, reject part if more is set
         if (msg_->flags () & msg_t::more) {
             errno = EINVAL;
@@ -171,7 +169,7 @@ bool zmq::dgram_t::xhas_out ()
     return pipe->check_write ();
 }
 
-zmq::blob_t zmq::dgram_t::get_credential () const
+const zmq::blob_t &zmq::dgram_t::get_credential () const
 {
-    return last_in? last_in->get_credential (): saved_credential;
+    return last_in ? last_in->get_credential () : saved_credential;
 }

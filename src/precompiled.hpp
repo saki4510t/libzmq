@@ -32,11 +32,15 @@
 
 #include "platform.hpp"
 
-#define __STDC_LIMIT_MACROS 
+#define __STDC_LIMIT_MACROS
 
 // This must be included before any windows headers are compiled.
 #if defined ZMQ_HAVE_WINDOWS
 #include "windows.hpp"
+#endif
+
+#if defined ZMQ_HAVE_OPENBSD
+#define ucred sockpeercred
 #endif
 
 // 0MQ definitions and exported functions
@@ -63,7 +67,6 @@
 #include <signal.h>
 #include <stdarg.h>
 #include <stddef.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

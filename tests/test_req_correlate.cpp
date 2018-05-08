@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2007-2016 Contributors as noted in the AUTHORS file
+    Copyright (c) 2007-2017 Contributors as noted in the AUTHORS file
 
     This file is part of libzmq, the ZeroMQ core engine in C++.
 
@@ -31,7 +31,9 @@
 
 int main (void)
 {
-    setup_test_environment();
+    setup_test_environment ();
+    size_t len = MAX_SOCKET_STRING;
+    char my_endpoint[MAX_SOCKET_STRING];
     void *ctx = zmq_ctx_new ();
     assert (ctx);
 
@@ -49,10 +51,12 @@ int main (void)
     rc = zmq_setsockopt (req, ZMQ_RCVTIMEO, &rcvtimeo, sizeof (int));
     assert (rc == 0);
 
-    rc = zmq_connect (req, "tcp://localhost:5555");
+    rc = zmq_bind (router, "tcp://127.0.0.1:*");
+    assert (rc == 0);
+    rc = zmq_getsockopt (router, ZMQ_LAST_ENDPOINT, my_endpoint, &len);
     assert (rc == 0);
 
-    rc = zmq_bind (router, "tcp://127.0.0.1:5555");
+    rc = zmq_connect (req, my_endpoint);
     assert (rc == 0);
 
     // Send a multi-part request.
@@ -61,7 +65,7 @@ int main (void)
     zmq_msg_t msg;
     zmq_msg_init (&msg);
 
-    // Receive peer identity
+    // Receive peer routing id
     rc = zmq_msg_recv (&msg, router, 0);
     assert (rc != -1);
     assert (zmq_msg_size (&msg) > 0);
@@ -78,7 +82,7 @@ int main (void)
     // Receive request id 1
     rc = zmq_msg_recv (&msg, router, 0);
     assert (rc != -1);
-    assert (zmq_msg_size (&msg) == sizeof(uint32_t));
+    assert (zmq_msg_size (&msg) == sizeof (uint32_t));
     uint32_t req_id = *static_cast<uint32_t *> (zmq_msg_data (&msg));
     zmq_msg_t req_id_msg;
     zmq_msg_init (&req_id_msg);
