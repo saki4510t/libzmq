@@ -57,7 +57,7 @@ zmq::poll_t::~poll_t ()
 zmq::poll_t::handle_t zmq::poll_t::add_fd (fd_t fd_, i_poll_events *events_)
 {
     check_thread ();
-    zmq_assert (fd_ != retired_fd);
+    if (!(fd_ != retired_fd)) return retired_fd; // saki zmq_assert (fd_ != retired_fd);
 
     //  If the file descriptor table is too small expand it.
     fd_table_t::size_type sz = fd_table.size ();
@@ -71,7 +71,7 @@ zmq::poll_t::handle_t zmq::poll_t::add_fd (fd_t fd_, i_poll_events *events_)
 
     pollfd pfd = {fd_, 0, 0};
     pollset.push_back (pfd);
-    zmq_assert (fd_table[fd_].index == retired_fd);
+    if (!(fd_table[fd_].index == retired_fd)) return retired_fd; // saki zmq_assert (fd_table[fd_].index == retired_fd);
 
     fd_table[fd_].index = pollset.size () - 1;
     fd_table[fd_].events = events_;
@@ -86,7 +86,7 @@ void zmq::poll_t::rm_fd (handle_t handle_)
 {
     check_thread ();
     fd_t index = fd_table[handle_].index;
-    zmq_assert (index != retired_fd);
+    if (!(index != retired_fd)) return; // saki zmq_assert (index != retired_fd);
 
     //  Mark the fd as unused.
     pollset[index].fd = retired_fd;
@@ -145,7 +145,7 @@ void zmq::poll_t::loop ()
         cleanup_retired ();
 
         if (pollset.empty ()) {
-            zmq_assert (get_load () == 0);
+            if (!(get_load () == 0)) break; // saki zmq_assert (get_load () == 0);
 
             if (timeout == 0)
                 break;
@@ -160,7 +160,7 @@ void zmq::poll_t::loop ()
         wsa_assert (rc != SOCKET_ERROR);
 #else
         if (rc == -1) {
-            errno_assert (errno == EINTR);
+            // saki errno_assert (errno == EINTR);
             continue;
         }
 #endif
@@ -171,7 +171,7 @@ void zmq::poll_t::loop ()
             continue;
 
         for (pollset_t::size_type i = 0; i != pollset.size (); i++) {
-            zmq_assert (!(pollset[i].revents & POLLNVAL));
+            if (!(!(pollset[i].revents & POLLNVAL))) continue; // saki zmq_assert (!(pollset[i].revents & POLLNVAL));
             if (pollset[i].fd == retired_fd)
                 continue;
             if (pollset[i].revents & (POLLERR | POLLHUP))

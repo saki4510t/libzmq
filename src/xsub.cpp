@@ -45,21 +45,21 @@ zmq::xsub_t::xsub_t (class ctx_t *parent_, uint32_t tid_, int sid_) :
     //  subscription commands are sent to the wire.
     options.linger.store (0);
 
-    int rc = message.init ();
-    errno_assert (rc == 0);
+    /*int rc =*/ message.init ();
+// saki    errno_assert (rc == 0);
 }
 
 zmq::xsub_t::~xsub_t ()
 {
-    int rc = message.close ();
-    errno_assert (rc == 0);
+    /*int rc =*/ message.close ();
+// saki   errno_assert (rc == 0);
 }
 
 void zmq::xsub_t::xattach_pipe (pipe_t *pipe_, bool subscribe_to_all_)
 {
     LIBZMQ_UNUSED (subscribe_to_all_);
 
-    zmq_assert (pipe_);
+    if (!(pipe_)) return; // saki zmq_assert (pipe_);
     fq.attach (pipe_);
     dist.attach (pipe_);
 
@@ -113,9 +113,9 @@ int zmq::xsub_t::xsend (msg_t *msg_)
         return dist.send_to_all (msg_);
 
     int rc = msg_->close ();
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
     rc = msg_->init ();
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
     return 0;
 }
@@ -132,7 +132,7 @@ int zmq::xsub_t::xrecv (msg_t *msg_)
     //  return it straight ahead.
     if (has_message) {
         int rc = msg_->move (message);
-        errno_assert (rc == 0);
+	    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
         has_message = false;
         more = msg_->flags () & msg_t::more ? true : false;
         return 0;
@@ -161,7 +161,7 @@ int zmq::xsub_t::xrecv (msg_t *msg_)
         //  from the pipe.
         while (msg_->flags () & msg_t::more) {
             rc = fq.recv (msg_);
-            errno_assert (rc == 0);
+            if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
         }
     }
 }
@@ -186,7 +186,7 @@ bool zmq::xsub_t::xhas_in ()
         //  If there's no message available, return immediately.
         //  The same when error occurs.
         if (rc != 0) {
-            errno_assert (errno == EAGAIN);
+// saki     errno_assert (errno == EAGAIN);
             return false;
         }
 
@@ -200,7 +200,7 @@ bool zmq::xsub_t::xhas_in ()
         //  from the pipe.
         while (message.flags () & msg_t::more) {
             rc = fq.recv (&message);
-            errno_assert (rc == 0);
+            if (!(rc == 0)) break; // errno_assert (rc == 0);
         }
     }
 }
@@ -227,7 +227,7 @@ void zmq::xsub_t::send_subscription (unsigned char *data_,
     //  Create the subscription message.
     msg_t msg;
     int rc = msg.init_size (size_ + 1);
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return; // saki errno_assert (rc == 0);
     unsigned char *data = (unsigned char *) msg.data ();
     data[0] = 1;
 

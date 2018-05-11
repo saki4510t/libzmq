@@ -150,7 +150,8 @@ void zmq::object_t::process_command (command_t &cmd_)
 
         case command_t::done:
         default:
-            zmq_assert (false);
+// saki            zmq_assert (false);
+            break;	// saki
     }
 }
 
@@ -384,92 +385,92 @@ void zmq::object_t::send_done ()
 
 void zmq::object_t::process_stop ()
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::object_t::process_plug ()
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::object_t::process_own (own_t *)
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::object_t::process_attach (i_engine *)
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::object_t::process_bind (pipe_t *)
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::object_t::process_activate_read ()
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::object_t::process_activate_write (uint64_t)
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::object_t::process_hiccup (void *)
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::object_t::process_pipe_term ()
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::object_t::process_pipe_term_ack ()
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::object_t::process_pipe_hwm (int, int)
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::object_t::process_term_req (own_t *)
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::object_t::process_term (int)
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::object_t::process_term_ack ()
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::object_t::process_term_endpoint (std::string *)
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::object_t::process_reap (class socket_base_t *)
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::object_t::process_reaped ()
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::object_t::process_seqnum ()
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::object_t::send_command (command_t &cmd_)

@@ -73,8 +73,8 @@ zmq::tcp_listener_t::tcp_listener_t (io_thread_t *io_thread_,
 
 zmq::tcp_listener_t::~tcp_listener_t ()
 {
-    zmq_assert (s == retired_fd);
-    zmq_assert (!handle);
+    if (!(s == retired_fd)) return; // saki zmq_assert (s == retired_fd);
+    if (!(!handle)) return; // saki zmq_assert (!handle);
 }
 
 void zmq::tcp_listener_t::process_plug ()
@@ -127,7 +127,7 @@ void zmq::tcp_listener_t::in_event ()
     //  Create and launch a session object.
     session_base_t *session =
       session_base_t::create (io_thread, false, socket, options, NULL);
-    errno_assert (session);
+    if (!(session)) return; // saki errno_assert (session);
     session->inc_seqnum ();
     launch_child (session);
     send_attach (session, engine, false);
@@ -136,13 +136,13 @@ void zmq::tcp_listener_t::in_event ()
 
 void zmq::tcp_listener_t::close ()
 {
-    zmq_assert (s != retired_fd);
+    if (!(s != retired_fd)) return; // saki zmq_assert (s != retired_fd);
 #ifdef ZMQ_HAVE_WINDOWS
     int rc = closesocket (s);
     wsa_assert (rc != SOCKET_ERROR);
 #else
     int rc = ::close (s);
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 #endif
     socket->event_closed (endpoint, s);
     s = retired_fd;
@@ -244,7 +244,7 @@ int zmq::tcp_listener_t::set_address (const char *addr_)
     errno_assert (rc == 0);
 #else
     rc = setsockopt (s, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof (int));
-    errno_assert (rc == 0);
+    if (!(rc == 0)) goto error; // saki errno_assert (rc == 0);
 #endif
 
     //  Bind the socket to the network interface and port.
@@ -290,7 +290,7 @@ zmq::fd_t zmq::tcp_listener_t::accept ()
     //  The situation where connection cannot be accepted due to insufficient
     //  resources is considered valid and treated by ignoring the connection.
     //  Accept one connection and deal with different failure modes.
-    zmq_assert (s != retired_fd);
+    if (!(s != retired_fd)) return retired_fd; // saki zmq_assert (s != retired_fd);
 
     struct sockaddr_storage ss;
     memset (&ss, 0, sizeof (ss));
@@ -319,10 +319,10 @@ zmq::fd_t zmq::tcp_listener_t::accept ()
 #endif
 #else
     if (sock == -1) {
-        errno_assert (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR
-                      || errno == ECONNABORTED || errno == EPROTO
-                      || errno == ENOBUFS || errno == ENOMEM || errno == EMFILE
-                      || errno == ENFILE);
+// saki        errno_assert (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR
+//                      || errno == ECONNABORTED || errno == EPROTO
+//                      || errno == ENOBUFS || errno == ENOMEM || errno == EMFILE
+//                      || errno == ENFILE);
         return retired_fd;
     }
 #endif
@@ -332,7 +332,7 @@ zmq::fd_t zmq::tcp_listener_t::accept ()
     //  Race condition can cause socket not to be closed (if fork happens
     //  between accept and this point).
     int rc = fcntl (sock, F_SETFD, FD_CLOEXEC);
-    errno_assert (rc != -1);
+    if (!(rc != -1)) return retired_fd; // saki errno_assert (rc != -1);
 #endif
 
     if (!options.tcp_accept_filters.empty ()) {
@@ -350,8 +350,8 @@ zmq::fd_t zmq::tcp_listener_t::accept ()
             int rc = closesocket (sock);
             wsa_assert (rc != SOCKET_ERROR);
 #else
-            int rc = ::close (sock);
-            errno_assert (rc == 0);
+            /*int rc =*/ ::close (sock);
+// saki            errno_assert (rc == 0);
 #endif
             return retired_fd;
         }
@@ -362,8 +362,8 @@ zmq::fd_t zmq::tcp_listener_t::accept ()
         int rc = closesocket (sock);
         wsa_assert (rc != SOCKET_ERROR);
 #else
-        int rc = ::close (sock);
-        errno_assert (rc == 0);
+        /*int rc =*/ ::close (sock);
+// saki        errno_assert (rc == 0);
 #endif
         return retired_fd;
     }

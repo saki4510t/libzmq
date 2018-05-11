@@ -48,7 +48,7 @@ zmq::v2_decoder_t::v2_decoder_t (size_t bufsize_,
     maxmsgsize (maxmsgsize_)
 {
     int rc = in_progress.init ();
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 
     //  At the beginning, read one byte and go to flags_ready state.
     next_step (tmpbuf, 1, &v2_decoder_t::flags_ready);
@@ -57,7 +57,7 @@ zmq::v2_decoder_t::v2_decoder_t (size_t bufsize_,
 zmq::v2_decoder_t::~v2_decoder_t ()
 {
     int rc = in_progress.close ();
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 }
 
 int zmq::v2_decoder_t::flags_ready (unsigned char const *)
@@ -137,9 +137,9 @@ int zmq::v2_decoder_t::size_ready (uint64_t msg_size,
     }
 
     if (unlikely (rc)) {
-        errno_assert (errno == ENOMEM);
+        if (!(errno == ENOMEM)) return -1; // saki errno_assert (errno == ENOMEM);
         rc = in_progress.init ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
         errno = ENOMEM;
         return -1;
     }

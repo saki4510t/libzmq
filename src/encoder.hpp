@@ -89,9 +89,9 @@ template <typename T> class encoder_base_t : public i_encoder
             if (!to_write) {
                 if (new_msg_flag) {
                     int rc = in_progress->close ();
-                    errno_assert (rc == 0);
+                    if (!(rc == 0)) break; // saki errno_assert (rc == 0);
                     rc = in_progress->init ();
-                    errno_assert (rc == 0);
+                    if (!(rc == 0)) break; // saki errno_assert (rc == 0);
                     in_progress = NULL;
                     break;
                 }
@@ -130,7 +130,7 @@ template <typename T> class encoder_base_t : public i_encoder
 
     void load_msg (msg_t *msg_)
     {
-        zmq_assert (in_progress == NULL);
+        if (!(in_progress == NULL)) return; // saki zmq_assert (in_progress == NULL);
         in_progress = msg_;
         (static_cast<T *> (this)->*next) ();
     }

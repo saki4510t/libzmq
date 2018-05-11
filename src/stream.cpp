@@ -53,7 +53,7 @@ zmq::stream_t::stream_t (class ctx_t *parent_, uint32_t tid_, int sid_) :
 
 zmq::stream_t::~stream_t ()
 {
-    zmq_assert (outpipes.empty ());
+    if (!(outpipes.empty ())) return; // saki zmq_assert (outpipes.empty ());
     prefetched_routing_id.close ();
     prefetched_msg.close ();
 }
@@ -62,7 +62,7 @@ void zmq::stream_t::xattach_pipe (pipe_t *pipe_, bool subscribe_to_all_)
 {
     LIBZMQ_UNUSED (subscribe_to_all_);
 
-    zmq_assert (pipe_);
+    if (!(pipe_)) return; // saki zmq_assert (pipe_);
 
     identify_peer (pipe_);
     fq.attach (pipe_);
@@ -71,7 +71,7 @@ void zmq::stream_t::xattach_pipe (pipe_t *pipe_, bool subscribe_to_all_)
 void zmq::stream_t::xpipe_terminated (pipe_t *pipe_)
 {
     outpipes_t::iterator it = outpipes.find (pipe_->get_routing_id ());
-    zmq_assert (it != outpipes.end ());
+    if (!(it != outpipes.end ())) return; // saki zmq_assert (it != outpipes.end ());
     outpipes.erase (it);
     fq.pipe_terminated (pipe_);
     if (pipe_ == current_out)
@@ -90,8 +90,8 @@ void zmq::stream_t::xwrite_activated (pipe_t *pipe_)
         if (it->second.pipe == pipe_)
             break;
 
-    zmq_assert (it != outpipes.end ());
-    zmq_assert (!it->second.active);
+    if (!(it != outpipes.end ())) return; // saki zmq_assert (it != outpipes.end ());
+    if (!(!it->second.active)) return; // saki zmq_assert (!it->second.active);
     it->second.active = true;
 }
 
@@ -100,7 +100,7 @@ int zmq::stream_t::xsend (msg_t *msg_)
     //  If this is the first part of the message it's the ID of the
     //  peer to send the message to.
     if (!more_out) {
-        zmq_assert (!current_out);
+        if (!(!current_out)) return -1; // saki zmq_assert (!current_out);
 
         //  If we have malformed message (prefix with no subsequent message)
         //  then just silently ignore it.
@@ -129,9 +129,9 @@ int zmq::stream_t::xsend (msg_t *msg_)
         more_out = true;
 
         int rc = msg_->close ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
         rc = msg_->init ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
         return 0;
     }
 
@@ -149,9 +149,9 @@ int zmq::stream_t::xsend (msg_t *msg_)
         if (msg_->size () == 0) {
             current_out->terminate (false);
             int rc = msg_->close ();
-            errno_assert (rc == 0);
+            if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
             rc = msg_->init ();
-            errno_assert (rc == 0);
+            if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
             current_out = NULL;
             return 0;
         }
@@ -161,12 +161,12 @@ int zmq::stream_t::xsend (msg_t *msg_)
         current_out = NULL;
     } else {
         int rc = msg_->close ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
     }
 
     //  Detach the message from the data buffer.
     int rc = msg_->init ();
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
     return 0;
 }
@@ -202,11 +202,11 @@ int zmq::stream_t::xrecv (msg_t *msg_)
     if (prefetched) {
         if (!routing_id_sent) {
             int rc = msg_->move (prefetched_routing_id);
-            errno_assert (rc == 0);
+            if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
             routing_id_sent = true;
         } else {
             int rc = msg_->move (prefetched_msg);
-            errno_assert (rc == 0);
+            if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
             prefetched = false;
         }
         return 0;
@@ -217,17 +217,17 @@ int zmq::stream_t::xrecv (msg_t *msg_)
     if (rc != 0)
         return -1;
 
-    zmq_assert (pipe != NULL);
-    zmq_assert ((prefetched_msg.flags () & msg_t::more) == 0);
+    if (!(pipe != NULL)) return -1; // saki zmq_assert (pipe != NULL);
+    if (!((prefetched_msg.flags () & msg_t::more) == 0)) return -1; // saki zmq_assert ((prefetched_msg.flags () & msg_t::more) == 0);
 
     //  We have received a frame with TCP data.
     //  Rather than sending this frame, we keep it in prefetched
     //  buffer and send a frame with peer's ID.
     const blob_t &routing_id = pipe->get_routing_id ();
     rc = msg_->close ();
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
     rc = msg_->init_size (routing_id.size ());
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
     // forward metadata (if any)
     metadata_t *metadata = prefetched_msg.metadata ();
@@ -256,12 +256,12 @@ bool zmq::stream_t::xhas_in ()
     if (rc != 0)
         return false;
 
-    zmq_assert (pipe != NULL);
-    zmq_assert ((prefetched_msg.flags () & msg_t::more) == 0);
+    if (!(pipe != NULL)) return false; // saki zmq_assert (pipe != NULL);
+    if (!((prefetched_msg.flags () & msg_t::more) == 0)) return false; // saki zmq_assert ((prefetched_msg.flags () & msg_t::more) == 0);
 
     const blob_t &routing_id = pipe->get_routing_id ();
     rc = prefetched_routing_id.init_size (routing_id.size ());
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return false; // saki errno_assert (rc == 0);
 
     // forward metadata (if any)
     metadata_t *metadata = prefetched_msg.metadata ();
@@ -297,7 +297,7 @@ void zmq::stream_t::identify_peer (pipe_t *pipe_)
                         connect_routing_id.length ());
         connect_routing_id.clear ();
         outpipes_t::iterator it = outpipes.find (routing_id);
-        zmq_assert (it == outpipes.end ());
+        if (!(it == outpipes.end ())) return; // saki zmq_assert (it == outpipes.end ());
     } else {
         put_uint32 (buffer + 1, next_integral_routing_id++);
         routing_id.set (buffer, sizeof buffer);
@@ -307,8 +307,8 @@ void zmq::stream_t::identify_peer (pipe_t *pipe_)
     pipe_->set_router_socket_routing_id (routing_id);
     //  Add the record into output pipes lookup table
     outpipe_t outpipe = {pipe_, true};
-    const bool ok =
-      outpipes.ZMQ_MAP_INSERT_OR_EMPLACE (ZMQ_MOVE (routing_id), outpipe)
-        .second;
-    zmq_assert (ok);
+    /*const bool ok =*/
+      outpipes.ZMQ_MAP_INSERT_OR_EMPLACE (ZMQ_MOVE (routing_id), outpipe);
+//        .second;
+// saki    zmq_assert (ok);
 }

@@ -52,7 +52,7 @@ void zmq::push_t::xattach_pipe (pipe_t *pipe_, bool subscribe_to_all_)
     //  to receive the delimiter.
     pipe_->set_nodelay ();
 
-    zmq_assert (pipe_);
+    if (!(pipe_)) return; // saki zmq_assert (pipe_);
     lb.attach (pipe_);
 }
 

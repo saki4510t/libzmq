@@ -99,7 +99,7 @@ bool zmq::ctx_t::check_tag ()
 zmq::ctx_t::~ctx_t ()
 {
     //  Check that there are no remaining sockets.
-    zmq_assert (sockets.empty ());
+	if (!(sockets.empty ())) return; // saki zmq_assert (sockets.empty ());
 
     //  Ask I/O threads to terminate. If stop signal wasn't sent to I/O
     //  thread subsequent invocation of destructor would hang-up.
@@ -145,7 +145,7 @@ int zmq::ctx_t::terminate ()
          ++p) {
         zmq::socket_base_t *s = create_socket (ZMQ_PAIR);
         // create_socket might fail eg: out of memory/sockets limit reached
-        zmq_assert (s);
+        if (!(s)) break; // saki zmq_assert (s);
         s->bind (p->first.c_str ());
         s->close ();
     }
@@ -185,10 +185,10 @@ int zmq::ctx_t::terminate ()
         int rc = term_mailbox.recv (&cmd, -1);
         if (rc == -1 && errno == EINTR)
             return -1;
-        errno_assert (rc == 0);
-        zmq_assert (cmd.type == command_t::done);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
+        if (!(cmd.type == command_t::done)) return -1; // saki zmq_assert (cmd.type == command_t::done);
         slot_sync.lock ();
-        zmq_assert (sockets.empty ());
+        if (!sockets.empty ()) return -1; // saki zmq_assert (sockets.empty ());
     }
     slot_sync.unlock ();
 
@@ -614,9 +614,9 @@ void zmq::ctx_t::connect_inproc_sockets (
     if (!bind_options.recv_routing_id) {
         msg_t msg;
         const bool ok = pending_connection_.bind_pipe->read (&msg);
-        zmq_assert (ok);
+        if (!(ok)) return; // saki zmq_assert (ok);
         const int rc = msg.close ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return; // saki errno_assert (rc == 0);
     }
 
     bool conflate =
@@ -664,12 +664,12 @@ void zmq::ctx_t::connect_inproc_sockets (
         && pending_connection_.endpoint.socket->check_tag ()) {
         msg_t routing_id;
         const int rc = routing_id.init_size (bind_options.routing_id_size);
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return; // saki errno_assert (rc == 0);
         memcpy (routing_id.data (), bind_options.routing_id,
                 bind_options.routing_id_size);
         routing_id.set_flags (msg_t::routing_id);
         const bool written = pending_connection_.bind_pipe->write (&routing_id);
-        zmq_assert (written);
+        if (!(written)) return; // saki zmq_assert (written);
         pending_connection_.bind_pipe->flush ();
     }
 }

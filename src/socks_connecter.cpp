@@ -71,15 +71,15 @@ zmq::socks_connecter_t::socks_connecter_t (class io_thread_t *io_thread_,
     session (session_),
     current_reconnect_ivl (options.reconnect_ivl)
 {
-    zmq_assert (addr);
-    zmq_assert (addr->protocol == "tcp");
+    if (!(addr)) return; // saki zmq_assert (addr);
+    if (!(addr->protocol == "tcp")) return; // saki zmq_assert (addr->protocol == "tcp");
     proxy_addr->to_string (endpoint);
     socket = session->get_socket ();
 }
 
 zmq::socks_connecter_t::~socks_connecter_t ()
 {
-    zmq_assert (s == retired_fd);
+    if (!(s == retired_fd)) return; // saki zmq_assert (s == retired_fd);
     LIBZMQ_DELETE (proxy_addr);
 }
 
@@ -115,7 +115,7 @@ void zmq::socks_connecter_t::process_term (int linger_)
 
 void zmq::socks_connecter_t::in_event ()
 {
-    zmq_assert (status != unplugged && status != waiting_for_reconnect_time);
+    if (!(status != unplugged && status != waiting_for_reconnect_time)) return; // saki zmq_assert (status != unplugged && status != waiting_for_reconnect_time);
 
     if (status == waiting_for_choice) {
         int rc = choice_decoder.input (s);
@@ -174,8 +174,10 @@ void zmq::socks_connecter_t::in_event ()
 
 void zmq::socks_connecter_t::out_event ()
 {
-    zmq_assert (status == waiting_for_proxy_connection
-                || status == sending_greeting || status == sending_request);
+	if (!(status == waiting_for_proxy_connection
+                         || status == sending_greeting || status == sending_request)) return;
+// saki    zmq_assert (status == waiting_for_proxy_connection
+//                || status == sending_greeting || status == sending_request);
 
     if (status == waiting_for_proxy_connection) {
         const int rc = (int) check_proxy_connection ();
@@ -186,7 +188,7 @@ void zmq::socks_connecter_t::out_event ()
             status = sending_greeting;
         }
     } else if (status == sending_greeting) {
-        zmq_assert (greeting_encoder.has_pending_data ());
+        if (!(greeting_encoder.has_pending_data ())) return; // saki zmq_assert (greeting_encoder.has_pending_data ());
         const int rc = greeting_encoder.output (s);
         if (rc == -1 || rc == 0)
             error ();
@@ -196,7 +198,7 @@ void zmq::socks_connecter_t::out_event ()
             status = waiting_for_choice;
         }
     } else {
-        zmq_assert (request_encoder.has_pending_data ());
+        if (!(request_encoder.has_pending_data ())) return; // saki zmq_assert (request_encoder.has_pending_data ());
         const int rc = request_encoder.output (s);
         if (rc == -1 || rc == 0)
             error ();
@@ -249,8 +251,8 @@ int zmq::socks_connecter_t::process_server_response (
 
 void zmq::socks_connecter_t::timer_event (int id_)
 {
-    zmq_assert (status == waiting_for_reconnect_time);
-    zmq_assert (id_ == reconnect_timer_id);
+    if (!(status == waiting_for_reconnect_time)) return; // saki zmq_assert (status == waiting_for_reconnect_time);
+    if (!(id_ == reconnect_timer_id)) return; // saki zmq_assert (id_ == reconnect_timer_id);
     initiate_connect ();
 }
 
@@ -291,7 +293,7 @@ int zmq::socks_connecter_t::get_new_reconnect_ivl ()
 
 int zmq::socks_connecter_t::connect_to_proxy ()
 {
-    zmq_assert (s == retired_fd);
+    if (!(s == retired_fd)) return -1; // saki zmq_assert (s == retired_fd);
 
     //  Resolve the address
     LIBZMQ_DELETE (proxy_addr->resolved.tcp_addr);
@@ -415,10 +417,10 @@ zmq::fd_t zmq::socks_connecter_t::check_proxy_connection ()
         err = errno;
     if (err != 0) {
         errno = err;
-        errno_assert (errno == ECONNREFUSED || errno == ECONNRESET
-                      || errno == ETIMEDOUT || errno == EHOSTUNREACH
-                      || errno == ENETUNREACH || errno == ENETDOWN
-                      || errno == EINVAL);
+// saki        errno_assert (errno == ECONNREFUSED || errno == ECONNRESET
+//                      || errno == ETIMEDOUT || errno == EHOSTUNREACH
+//                      || errno == ENETUNREACH || errno == ENETDOWN
+//                      || errno == EINVAL);
         return -1;
     }
 #endif
@@ -436,13 +438,13 @@ zmq::fd_t zmq::socks_connecter_t::check_proxy_connection ()
 
 void zmq::socks_connecter_t::close ()
 {
-    zmq_assert (s != retired_fd);
+    if (!(s != retired_fd)) return; // saki zmq_assert (s != retired_fd);
 #ifdef ZMQ_HAVE_WINDOWS
     const int rc = closesocket (s);
     wsa_assert (rc != SOCKET_ERROR);
 #else
     const int rc = ::close (s);
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 #endif
     socket->event_closed (endpoint, s);
     s = retired_fd;

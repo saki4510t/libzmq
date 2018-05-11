@@ -59,7 +59,7 @@ zmq::xpub_t::~xpub_t ()
 
 void zmq::xpub_t::xattach_pipe (pipe_t *pipe_, bool subscribe_to_all_)
 {
-    zmq_assert (pipe_);
+    if (!(pipe_)) return; // saki zmq_assert (pipe_);
     dist.attach (pipe_);
 
     //  If subscribe_to_all_ is specified, the caller would like to subscribe
@@ -72,9 +72,9 @@ void zmq::xpub_t::xattach_pipe (pipe_t *pipe_, bool subscribe_to_all_)
         msg_t copy;
         copy.init ();
         int rc = copy.copy (welcome_msg);
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return; // saki errno_assert (rc == 0);
         bool ok = pipe_->write (&copy);
-        zmq_assert (ok);
+        if (!(ok)) return; // saki zmq_assert (ok);
         pipe_->flush ();
     }
 
@@ -181,7 +181,7 @@ int zmq::xpub_t::xsetsockopt (int option_,
 
         if (optvallen_ > 0) {
             int rc = welcome_msg.init_size (optvallen_);
-            errno_assert (rc == 0);
+            if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
             unsigned char *data = (unsigned char *) welcome_msg.data ();
             memcpy (data, optval_, optvallen_);
@@ -275,9 +275,9 @@ int zmq::xpub_t::xrecv (msg_t *msg_)
     }
 
     int rc = msg_->close ();
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
     rc = msg_->init_size (pending_data.front ().size ());
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
     memcpy (msg_->data (), pending_data.front ().data (),
             pending_data.front ().size ());
 

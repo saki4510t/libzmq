@@ -144,7 +144,7 @@ zmq::ipc_listener_t::ipc_listener_t (io_thread_t *io_thread_,
 
 zmq::ipc_listener_t::~ipc_listener_t ()
 {
-    zmq_assert (s == retired_fd);
+// saki    zmq_assert (s == retired_fd);
 }
 
 void zmq::ipc_listener_t::process_plug ()
@@ -180,12 +180,12 @@ void zmq::ipc_listener_t::in_event ()
     //  Choose I/O thread to run connecter in. Given that we are already
     //  running in an I/O thread, there must be at least one available.
     io_thread_t *io_thread = choose_io_thread (options.affinity);
-    zmq_assert (io_thread);
+    if (!(io_thread)) return; // saki zmq_assert (io_thread);
 
     //  Create and launch a session object.
     session_base_t *session =
       session_base_t::create (io_thread, false, socket, options, NULL);
-    errno_assert (session);
+    if (!(session)) return; // saki errno_assert (session);
     session->inc_seqnum ();
     launch_child (session);
     send_attach (session, engine, false);
@@ -290,10 +290,10 @@ error:
 
 int zmq::ipc_listener_t::close ()
 {
-    zmq_assert (s != retired_fd);
+    if (!(s != retired_fd)) return -1; // saki zmq_assert (s != retired_fd);
     int fd_for_event = s;
     int rc = ::close (s);
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
     s = retired_fd;
 
@@ -389,16 +389,16 @@ zmq::fd_t zmq::ipc_listener_t::accept ()
     //  Accept one connection and deal with different failure modes.
     //  The situation where connection cannot be accepted due to insufficient
     //  resources is considered valid and treated by ignoring the connection.
-    zmq_assert (s != retired_fd);
+    if (!(s != retired_fd)) return retired_fd; // saki zmq_assert (s != retired_fd);
 #if defined ZMQ_HAVE_SOCK_CLOEXEC && defined HAVE_ACCEPT4
     fd_t sock = ::accept4 (s, NULL, NULL, SOCK_CLOEXEC);
 #else
     fd_t sock = ::accept (s, NULL, NULL);
 #endif
     if (sock == -1) {
-        errno_assert (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR
-                      || errno == ECONNABORTED || errno == EPROTO
-                      || errno == ENFILE);
+// saki        errno_assert (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR
+//                      || errno == ECONNABORTED || errno == EPROTO
+//                      || errno == ENFILE);
         return retired_fd;
     }
 
@@ -407,14 +407,14 @@ zmq::fd_t zmq::ipc_listener_t::accept ()
     //  Race condition can cause socket not to be closed (if fork happens
     //  between accept and this point).
     int rc = fcntl (sock, F_SETFD, FD_CLOEXEC);
-    errno_assert (rc != -1);
+    if (!(rc != -1)) return retired_fd; // saki errno_assert (rc != -1);
 #endif
 
     // IPC accept() filters
 #if defined ZMQ_HAVE_SO_PEERCRED || defined ZMQ_HAVE_LOCAL_PEERCRED
     if (!filter (sock)) {
-        int rc = ::close (sock);
-        errno_assert (rc == 0);
+        /*int rc =*/ ::close (sock);
+// saki        errno_assert (rc == 0);
         return retired_fd;
     }
 #endif
@@ -424,8 +424,8 @@ zmq::fd_t zmq::ipc_listener_t::accept ()
         int rc = closesocket (sock);
         wsa_assert (rc != SOCKET_ERROR);
 #else
-        int rc = ::close (sock);
-        errno_assert (rc == 0);
+        /*int rc =*/ ::close (sock);
+// saki        errno_assert (rc == 0);
 #endif
         return retired_fd;
     }

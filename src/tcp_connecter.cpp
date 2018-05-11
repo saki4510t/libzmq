@@ -77,8 +77,8 @@ zmq::tcp_connecter_t::tcp_connecter_t (class io_thread_t *io_thread_,
     current_reconnect_ivl (options.reconnect_ivl),
     socket (session->get_socket ())
 {
-    zmq_assert (addr);
-    zmq_assert (addr->protocol == "tcp");
+    if (!(addr)) return; // saki zmq_assert (addr);
+    if (!(addr->protocol == "tcp")) return; // saki zmq_assert (addr->protocol == "tcp");
     addr->to_string (endpoint);
     // TODO the return value is unused! what if it fails? if this is impossible
     // or does not matter, change such that endpoint in initialized using an
@@ -87,10 +87,10 @@ zmq::tcp_connecter_t::tcp_connecter_t (class io_thread_t *io_thread_,
 
 zmq::tcp_connecter_t::~tcp_connecter_t ()
 {
-    zmq_assert (!connect_timer_started);
-    zmq_assert (!reconnect_timer_started);
-    zmq_assert (!handle);
-    zmq_assert (s == retired_fd);
+    if (!(!connect_timer_started)) return; // saki zmq_assert (!connect_timer_started);
+    if (!(!reconnect_timer_started)) return; // saki zmq_assert (!reconnect_timer_started);
+    if (!(!handle)) return; // saki zmq_assert (!handle);
+    if (!(s == retired_fd)) return; // saki zmq_assert (s == retired_fd);
 }
 
 void zmq::tcp_connecter_t::process_plug ()
@@ -171,7 +171,7 @@ void zmq::tcp_connecter_t::rm_handle ()
 
 void zmq::tcp_connecter_t::timer_event (int id_)
 {
-    zmq_assert (id_ == reconnect_timer_id || id_ == connect_timer_id);
+    if (!(id_ == reconnect_timer_id || id_ == connect_timer_id)) return; // saki zmq_assert (id_ == reconnect_timer_id || id_ == connect_timer_id);
     if (id_ == connect_timer_id) {
         connect_timer_started = false;
         rm_handle ();
@@ -246,7 +246,7 @@ int zmq::tcp_connecter_t::get_new_reconnect_ivl ()
 
 int zmq::tcp_connecter_t::open ()
 {
-    zmq_assert (s == retired_fd);
+    if (!(s == retired_fd)) return -1; // saki zmq_assert (s == retired_fd);
 
     //  Resolve the address
     if (addr->resolved.tcp_addr != NULL) {
@@ -261,7 +261,7 @@ int zmq::tcp_connecter_t::open ()
         LIBZMQ_DELETE (addr->resolved.tcp_addr);
         return -1;
     }
-    zmq_assert (addr->resolved.tcp_addr != NULL);
+    if (!(addr->resolved.tcp_addr != NULL)) return -1; // saki zmq_assert (addr->resolved.tcp_addr != NULL);
     tcp_address_t *const tcp_addr = addr->resolved.tcp_addr;
 
     //  Create the socket.
@@ -331,10 +331,10 @@ int zmq::tcp_connecter_t::open ()
 #elif defined ZMQ_HAVE_VXWORKS
         rc = setsockopt (s, SOL_SOCKET, SO_REUSEADDR, (char *) &flag,
                          sizeof (int));
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 #else
         rc = setsockopt (s, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof (int));
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 #endif
 
 #if defined ZMQ_HAVE_VXWORKS
@@ -403,8 +403,8 @@ zmq::fd_t zmq::tcp_connecter_t::connect ()
         err = errno;
     if (err != 0) {
         errno = err;
-        errno_assert (errno != EBADF && errno != ENOPROTOOPT
-                      && errno != ENOTSOCK && errno != ENOBUFS);
+// saki        errno_assert (errno != EBADF && errno != ENOPROTOOPT
+//                      && errno != ENOTSOCK && errno != ENOBUFS);
         return retired_fd;
     }
 #endif
@@ -427,13 +427,13 @@ bool zmq::tcp_connecter_t::tune_socket (const fd_t fd)
 
 void zmq::tcp_connecter_t::close ()
 {
-    zmq_assert (s != retired_fd);
+    if (!(s != retired_fd)) return; // saki zmq_assert (s != retired_fd);
 #ifdef ZMQ_HAVE_WINDOWS
     const int rc = closesocket (s);
     wsa_assert (rc != SOCKET_ERROR);
 #else
     const int rc = ::close (s);
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 #endif
     socket->event_closed (endpoint, s);
     s = retired_fd;

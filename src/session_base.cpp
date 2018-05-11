@@ -124,8 +124,8 @@ const char *zmq::session_base_t::get_endpoint () const
 
 zmq::session_base_t::~session_base_t ()
 {
-    zmq_assert (!pipe);
-    zmq_assert (!zap_pipe);
+    if (!(!pipe)) return; // saki zmq_assert (!pipe);
+    if (!(!zap_pipe)) return; // saki zmq_assert (!zap_pipe);
 
     //  If there's still a pending linger timer, remove it.
     if (has_linger_timer) {
@@ -142,9 +142,9 @@ zmq::session_base_t::~session_base_t ()
 
 void zmq::session_base_t::attach_pipe (pipe_t *pipe_)
 {
-    zmq_assert (!is_terminating ());
-    zmq_assert (!pipe);
-    zmq_assert (pipe_);
+    if (!(!is_terminating ())) return; // saki zmq_assert (!is_terminating ());
+    if (!(!pipe)) return; // saki zmq_assert (!pipe);
+    if (!(pipe_)) return; // saki zmq_assert (pipe_);
     pipe = pipe_;
     pipe->set_event_sink (this);
 }
@@ -167,7 +167,7 @@ int zmq::session_base_t::push_msg (msg_t *msg_)
         return 0;
     if (pipe && pipe->write (msg_)) {
         int rc = msg_->init ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
         return 0;
     }
 
@@ -201,7 +201,7 @@ int zmq::session_base_t::write_zap_msg (msg_t *msg_)
         zap_pipe->flush ();
 
     const int rc = msg_->init ();
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
     return 0;
 }
 
@@ -217,7 +217,7 @@ void zmq::session_base_t::flush ()
 
 void zmq::session_base_t::clean_pipes ()
 {
-    zmq_assert (pipe != NULL);
+    if (!(pipe != NULL)) return; // saki zmq_assert (pipe != NULL);
 
     //  Get rid of half-processed messages in the out pipe. Flush any
     //  unflushed messages upstream.
@@ -228,19 +228,21 @@ void zmq::session_base_t::clean_pipes ()
     while (incomplete_in) {
         msg_t msg;
         int rc = msg.init ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) break; // errno_assert (rc == 0);
         rc = pull_msg (&msg);
-        errno_assert (rc == 0);
+        if (!(rc == 0)) break; // errno_assert (rc == 0);
         rc = msg.close ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) break; // errno_assert (rc == 0);
     }
 }
 
 void zmq::session_base_t::pipe_terminated (pipe_t *pipe_)
 {
     // Drop the reference to the deallocated pipe if required.
-    zmq_assert (pipe_ == pipe || pipe_ == zap_pipe
-                || terminating_pipes.count (pipe_) == 1);
+    if (!(pipe_ == pipe || pipe_ == zap_pipe
+                         || terminating_pipes.count (pipe_) == 1)) return;
+// saki    zmq_assert (pipe_ == pipe || pipe_ == zap_pipe
+//                || terminating_pipes.count (pipe_) == 1);
 
     if (pipe_ == pipe) {
         // If this is our current pipe, remove it
@@ -276,7 +278,7 @@ void zmq::session_base_t::read_activated (pipe_t *pipe_)
 {
     // Skip activating if we're detaching this pipe
     if (unlikely (pipe_ != pipe && pipe_ != zap_pipe)) {
-        zmq_assert (terminating_pipes.count (pipe_) == 1);
+        if (!(terminating_pipes.count (pipe_) == 1)) return; // saki zmq_assert (terminating_pipes.count (pipe_) == 1);
         return;
     }
 
@@ -297,7 +299,7 @@ void zmq::session_base_t::write_activated (pipe_t *pipe_)
 {
     // Skip activating if we're detaching this pipe
     if (pipe != pipe_) {
-        zmq_assert (terminating_pipes.count (pipe_) == 1);
+        if (!(terminating_pipes.count (pipe_) == 1)) return; // saki zmq_assert (terminating_pipes.count (pipe_) == 1);
         return;
     }
 
@@ -309,7 +311,7 @@ void zmq::session_base_t::hiccuped (pipe_t *)
 {
     //  Hiccups are always sent from session to socket, not the other
     //  way round.
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 zmq::socket_base_t *zmq::session_base_t::get_socket ()
@@ -339,8 +341,10 @@ int zmq::session_base_t::zap_connect ()
         errno = ECONNREFUSED;
         return -1;
     }
-    zmq_assert (peer.options.type == ZMQ_REP || peer.options.type == ZMQ_ROUTER
-                || peer.options.type == ZMQ_SERVER);
+    if (!(peer.options.type == ZMQ_REP || peer.options.type == ZMQ_ROUTER
+                         || peer.options.type == ZMQ_SERVER)) return -1;
+// saki    zmq_assert (peer.options.type == ZMQ_REP || peer.options.type == ZMQ_ROUTER
+//                || peer.options.type == ZMQ_SERVER);
 
     //  Create a bi-directional pipe that will connect
     //  session with zap socket.
@@ -349,7 +353,7 @@ int zmq::session_base_t::zap_connect ()
     int hwms[2] = {0, 0};
     bool conflates[2] = {false, false};
     int rc = pipepair (parents, new_pipes, hwms, conflates);
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
     //  Attach local end of the pipe to this socket object.
     zap_pipe = new_pipes[0];
@@ -362,10 +366,10 @@ int zmq::session_base_t::zap_connect ()
     if (peer.options.recv_routing_id) {
         msg_t id;
         rc = id.init ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
         id.set_flags (msg_t::routing_id);
         bool ok = zap_pipe->write (&id);
-        zmq_assert (ok);
+        if (!(ok)) return -1; // saki zmq_assert (ok);
         zap_pipe->flush ();
     }
 
@@ -379,7 +383,7 @@ bool zmq::session_base_t::zap_enabled ()
 
 void zmq::session_base_t::process_attach (i_engine *engine_)
 {
-    zmq_assert (engine_ != NULL);
+    if (!(engine_ != NULL)) return; // saki zmq_assert (engine_ != NULL);
 
     //  Create the pipe if it does not exist yet.
     if (!pipe && !is_terminating ()) {
@@ -396,13 +400,13 @@ void zmq::session_base_t::process_attach (i_engine *engine_)
                        conflate ? -1 : options.sndhwm};
         bool conflates[2] = {conflate, conflate};
         int rc = pipepair (parents, pipes, hwms, conflates);
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 
         //  Plug the local end of the pipe.
         pipes[0]->set_event_sink (this);
 
         //  Remember the local end of the pipe.
-        zmq_assert (!pipe);
+        if (!(!pipe)) return; // saki zmq_assert (!pipe);
         pipe = pipes[0];
 
         //  Ask socket to plug into the remote end of the pipe.
@@ -410,7 +414,7 @@ void zmq::session_base_t::process_attach (i_engine *engine_)
     }
 
     //  Plug in the engine.
-    zmq_assert (!engine);
+    if (!(!engine)) return; // saki zmq_assert (!engine);
     engine = engine_;
     engine->plug (io_thread, this);
 }
@@ -425,9 +429,12 @@ void zmq::session_base_t::engine_error (
     if (pipe)
         clean_pipes ();
 
-    zmq_assert (reason == stream_engine_t::connection_error
-                || reason == stream_engine_t::timeout_error
-                || reason == stream_engine_t::protocol_error);
+	if (!(reason == stream_engine_t::connection_error
+                         || reason == stream_engine_t::timeout_error
+                         || reason == stream_engine_t::protocol_error)) return;
+// saki    zmq_assert (reason == stream_engine_t::connection_error
+//                || reason == stream_engine_t::timeout_error
+//                || reason == stream_engine_t::protocol_error);
 
     switch (reason) {
         case stream_engine_t::timeout_error:
@@ -460,7 +467,7 @@ void zmq::session_base_t::engine_error (
 
 void zmq::session_base_t::process_term (int linger_)
 {
-    zmq_assert (!pending);
+    if (!(!pending)) return; // saki zmq_assert (!pending);
 
     //  If the termination of the pipe happens before the term command is
     //  delivered there's nothing much to do. We can proceed with the
@@ -477,7 +484,7 @@ void zmq::session_base_t::process_term (int linger_)
         //  If linger is infinite (negative) we don't even have to set
         //  the timer.
         if (linger_ > 0) {
-            zmq_assert (!has_linger_timer);
+            if (!(!has_linger_timer)) return; // saki zmq_assert (!has_linger_timer);
             add_timer (linger_, linger_timer_id);
             has_linger_timer = true;
         }
@@ -501,11 +508,11 @@ void zmq::session_base_t::timer_event (int id_)
 {
     //  Linger period expired. We can proceed with termination even though
     //  there are still pending messages to be sent.
-    zmq_assert (id_ == linger_timer_id);
+    if (!(id_ == linger_timer_id)) return; // saki zmq_assert (id_ == linger_timer_id);
     has_linger_timer = false;
 
     //  Ask pipe to terminate even though there may be pending messages in it.
-    zmq_assert (pipe);
+    if (!(pipe)) return; // saki zmq_assert (pipe);
     pipe->terminate (false);
 }
 
@@ -548,12 +555,12 @@ void zmq::session_base_t::reconnect ()
 
 void zmq::session_base_t::start_connecting (bool wait_)
 {
-    zmq_assert (active);
+    if (!(active)) return; // saki zmq_assert (active);
 
     //  Choose I/O thread to run connecter in. Given that we are already
     //  running in an I/O thread, there must be at least one available.
     io_thread_t *io_thread = choose_io_thread (options.affinity);
-    zmq_assert (io_thread);
+    if (!(io_thread)) return; // saki zmq_assert (io_thread);
 
     //  Create the connecter object.
 
@@ -597,8 +604,10 @@ void zmq::session_base_t::start_connecting (bool wait_)
 #endif
 
     if (addr->protocol == "udp") {
-        zmq_assert (options.type == ZMQ_DISH || options.type == ZMQ_RADIO
-                    || options.type == ZMQ_DGRAM);
+    	if (!(options.type == ZMQ_DISH || options.type == ZMQ_RADIO
+                                 || options.type == ZMQ_DGRAM)) return;
+// saki        zmq_assert (options.type == ZMQ_DISH || options.type == ZMQ_RADIO
+//                    || options.type == ZMQ_DGRAM);
 
         udp_engine_t *engine = new (std::nothrow) udp_engine_t (options);
         alloc_assert (engine);
@@ -618,7 +627,7 @@ void zmq::session_base_t::start_connecting (bool wait_)
         }
 
         int rc = engine->init (addr, send, recv);
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return; // errno_assert (rc == 0);
 
         send_attach (this, engine);
 
@@ -629,8 +638,10 @@ void zmq::session_base_t::start_connecting (bool wait_)
 
     //  Both PGM and EPGM transports are using the same infrastructure.
     if (addr->protocol == "pgm" || addr->protocol == "epgm") {
-        zmq_assert (options.type == ZMQ_PUB || options.type == ZMQ_XPUB
-                    || options.type == ZMQ_SUB || options.type == ZMQ_XSUB);
+		if (!(options.type == ZMQ_PUB || options.type == ZMQ_XPUB
+                                 || options.type == ZMQ_SUB || options.type == ZMQ_XSUB)) return;
+// saki        zmq_assert (options.type == ZMQ_PUB || options.type == ZMQ_XPUB
+//                    || options.type == ZMQ_SUB || options.type == ZMQ_XSUB);
 
         //  For EPGM transport with UDP encapsulation of PGM is used.
         bool const udp_encapsulation = addr->protocol == "epgm";
@@ -646,7 +657,7 @@ void zmq::session_base_t::start_connecting (bool wait_)
 
             int rc =
               pgm_sender->init (udp_encapsulation, addr->address.c_str ());
-            errno_assert (rc == 0);
+            if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 
             send_attach (this, pgm_sender);
         } else {
@@ -657,7 +668,7 @@ void zmq::session_base_t::start_connecting (bool wait_)
 
             int rc =
               pgm_receiver->init (udp_encapsulation, addr->address.c_str ());
-            errno_assert (rc == 0);
+            if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 
             send_attach (this, pgm_receiver);
         }
@@ -678,7 +689,7 @@ void zmq::session_base_t::start_connecting (bool wait_)
             alloc_assert (norm_sender);
 
             int rc = norm_sender->init (addr->address.c_str (), true, false);
-            errno_assert (rc == 0);
+            if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 
             send_attach (this, norm_sender);
         } else { // ZMQ_SUB or ZMQ_XSUB
@@ -689,7 +700,7 @@ void zmq::session_base_t::start_connecting (bool wait_)
             alloc_assert (norm_receiver);
 
             int rc = norm_receiver->init (addr->address.c_str (), false, true);
-            errno_assert (rc == 0);
+            if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 
             send_attach (this, norm_receiver);
         }

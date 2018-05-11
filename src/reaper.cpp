@@ -68,7 +68,7 @@ zmq::mailbox_t *zmq::reaper_t::get_mailbox ()
 
 void zmq::reaper_t::start ()
 {
-    zmq_assert (mailbox.valid ());
+    if (!(mailbox.valid ())) return; // saki zmq_assert (mailbox.valid ());
 
     //  Start the thread.
     poller->start ();
@@ -98,7 +98,7 @@ void zmq::reaper_t::in_event ()
             continue;
         if (rc != 0 && errno == EAGAIN)
             break;
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 
         //  Process the command.
         cmd.destination->process_command (cmd);
@@ -107,12 +107,12 @@ void zmq::reaper_t::in_event ()
 
 void zmq::reaper_t::out_event ()
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::reaper_t::timer_event (int)
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::reaper_t::process_stop ()

@@ -45,9 +45,9 @@ zmq::ipc_address_t::ipc_address_t ()
 
 zmq::ipc_address_t::ipc_address_t (const sockaddr *sa, socklen_t sa_len)
 {
-    zmq_assert (sa && sa_len > 0);
-
     memset (&address, 0, sizeof address);
+    if (!(sa && sa_len > 0)) return; // saki zmq_assert (sa && sa_len > 0);
+
     if (sa->sa_family == AF_UNIX)
         memcpy (&address, sa, sa_len);
 }

@@ -37,8 +37,8 @@ zmq::mailbox_safe_t::mailbox_safe_t (mutex_t *sync_) : sync (sync_)
     //  Get the pipe into passive state. That way, if the users starts by
     //  polling on the associated file descriptor it will get woken up when
     //  new command is posted.
-    const bool ok = cpipe.read (NULL);
-    zmq_assert (!ok);
+    /*const bool ok =*/ cpipe.read (NULL);
+    // zmq_assert (!ok);
 }
 
 zmq::mailbox_safe_t::~mailbox_safe_t ()
@@ -101,7 +101,7 @@ int zmq::mailbox_safe_t::recv (command_t *cmd_, int timeout_)
     //  Wait for signal from the command sender.
     int rc = cond_var.wait (sync, timeout_);
     if (rc == -1) {
-        errno_assert (errno == EAGAIN || errno == EINTR);
+        // saki errno_assert (errno == EAGAIN || errno == EINTR);
         return -1;
     }
 

@@ -45,14 +45,14 @@ zmq::server_t::server_t (class ctx_t *parent_, uint32_t tid_, int sid_) :
 
 zmq::server_t::~server_t ()
 {
-    zmq_assert (outpipes.empty ());
+    // saki zmq_assert (outpipes.empty ());
 }
 
 void zmq::server_t::xattach_pipe (pipe_t *pipe_, bool subscribe_to_all_)
 {
     LIBZMQ_UNUSED (subscribe_to_all_);
 
-    zmq_assert (pipe_);
+    if (!(pipe_)) return; // saki zmq_assert (pipe_);
 
     uint32_t routing_id = next_routing_id++;
     if (!routing_id)
@@ -62,7 +62,7 @@ void zmq::server_t::xattach_pipe (pipe_t *pipe_, bool subscribe_to_all_)
     //  Add the record into output pipes lookup table
     outpipe_t outpipe = {pipe_, true};
     bool ok = outpipes.ZMQ_MAP_INSERT_OR_EMPLACE (routing_id, outpipe).second;
-    zmq_assert (ok);
+    if (!(ok)) return; // zmq_assert (ok);
 
     fq.attach (pipe_);
 }
@@ -71,7 +71,7 @@ void zmq::server_t::xpipe_terminated (pipe_t *pipe_)
 {
     outpipes_t::iterator it =
       outpipes.find (pipe_->get_server_socket_routing_id ());
-    zmq_assert (it != outpipes.end ());
+    if (!(it != outpipes.end ())) return; // saki zmq_assert (it != outpipes.end ());
     outpipes.erase (it);
     fq.pipe_terminated (pipe_);
 }
@@ -88,8 +88,8 @@ void zmq::server_t::xwrite_activated (pipe_t *pipe_)
         if (it->second.pipe == pipe_)
             break;
 
-    zmq_assert (it != outpipes.end ());
-    zmq_assert (!it->second.active);
+    if (!(it != outpipes.end ())) return; // saki zmq_assert (it != outpipes.end ());
+    if (!(!it->second.active)) return; // saki zmq_assert (!it->second.active);
     it->second.active = true;
 }
 
@@ -117,19 +117,19 @@ int zmq::server_t::xsend (msg_t *msg_)
 
     //  Message might be delivered over inproc, so we reset routing id
     int rc = msg_->reset_routing_id ();
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
     bool ok = it->second.pipe->write (msg_);
     if (unlikely (!ok)) {
         // Message failed to send - we must close it ourselves.
         rc = msg_->close ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
     } else
         it->second.pipe->flush ();
 
     //  Detach the message from the data buffer.
     rc = msg_->init ();
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
     return 0;
 }
@@ -155,7 +155,7 @@ int zmq::server_t::xrecv (msg_t *msg_)
     if (rc != 0)
         return rc;
 
-    zmq_assert (pipe != NULL);
+    if (!(pipe != NULL)) return -1; // saki zmq_assert (pipe != NULL);
 
     uint32_t routing_id = pipe->get_server_socket_routing_id ();
     msg_->set_routing_id (routing_id);
