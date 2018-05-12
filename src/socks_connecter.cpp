@@ -79,7 +79,7 @@ zmq::socks_connecter_t::socks_connecter_t (class io_thread_t *io_thread_,
 
 zmq::socks_connecter_t::~socks_connecter_t ()
 {
-    zmq_assert (s == retired_fd);
+    if (!(s == retired_fd)) return; // saki zmq_assert (s == retired_fd);
     LIBZMQ_DELETE (proxy_addr);
 }
 
@@ -442,7 +442,10 @@ void zmq::socks_connecter_t::close ()
     wsa_assert (rc != SOCKET_ERROR);
 #else
     const int rc = ::close (s);
-    errno_assert (rc == 0);
+// saki errno_assert (rc == 0);
+    if (rc) {
+   		// should not assert/abort, output log etc. instead!
+    }
 #endif
     socket->event_closed (endpoint, s);
     s = retired_fd;

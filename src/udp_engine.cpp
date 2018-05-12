@@ -68,7 +68,10 @@ zmq::udp_engine_t::~udp_engine_t ()
         wsa_assert (rc != SOCKET_ERROR);
 #else
         int rc = close (fd);
-        errno_assert (rc == 0);
+// saki        errno_assert (rc == 0);
+	    if (rc) {
+   			// should not assert/abort, output log etc. instead!
+    	}
 #endif
         fd = retired_fd;
     }
@@ -260,10 +263,16 @@ void zmq::udp_engine_t::out_event ()
             //  We discard the message if address is not valid
             if (rc != 0) {
                 rc = group_msg.close ();
-                errno_assert (rc == 0);
+// saki                errno_assert (rc == 0);
+			    if (rc) {
+   					// should not assert/abort, output log etc. instead!
+    			}
 
                 body_msg.close ();
-                errno_assert (rc == 0);
+// saki                errno_assert (rc == 0);
+			    if (rc) {
+   					// should not assert/abort, output log etc. instead!
+    			}
 
                 return;
             }
@@ -281,10 +290,18 @@ void zmq::udp_engine_t::out_event ()
         }
 
         rc = group_msg.close ();
-        errno_assert (rc == 0);
+        // saki errno_assert (rc == 0);
+	    if (rc) {
+   			// should not assert/abort, output log etc. instead!
+   			return;
+    	}
 
         body_msg.close ();
-        errno_assert (rc == 0);
+        // saki errno_assert (rc == 0);
+	    if (rc) {
+   			// should not assert/abort, output log etc. instead!
+   			return;
+    	}
 
 #ifdef ZMQ_HAVE_WINDOWS
         rc = sendto (fd, (const char *) out_buffer, (int) size, 0, out_address,
@@ -296,7 +313,7 @@ void zmq::udp_engine_t::out_event ()
         errno_assert (rc != -1);
 #else
         rc = sendto (fd, out_buffer, size, 0, out_address, out_addrlen);
-        errno_assert (rc != -1);
+// saki errno_assert (rc != -1);
 #endif
     } else
         reset_pollout (handle);
@@ -345,8 +362,8 @@ void zmq::udp_engine_t::in_event ()
     int nbytes = recvfrom (fd, in_buffer, MAX_UDP_MSG, 0,
                            (sockaddr *) &in_address, &in_addrlen);
     if (nbytes == -1) {
-        errno_assert (errno != EBADF && errno != EFAULT && errno != ENOMEM
-                      && errno != ENOTSOCK);
+// saki	errno_assert (errno != EBADF && errno != EFAULT && errno != ENOMEM
+//                    && errno != ENOTSOCK);
         return;
     }
 #endif
@@ -365,7 +382,7 @@ void zmq::udp_engine_t::in_event ()
         int group_size = in_buffer[0];
 
         rc = msg.init_size (group_size);
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return; // errno_assert (rc == 0);
         msg.set_flags (msg_t::more);
         memcpy (msg.data (), group_buffer, group_size);
 
@@ -383,16 +400,22 @@ void zmq::udp_engine_t::in_event ()
     //  Group description message doesn't fit in the pipe, drop
     if (rc != 0) {
         rc = msg.close ();
-        errno_assert (rc == 0);
+// saki    errno_assert (rc == 0);
+	    if (rc) {
+   			// should not assert/abort, output log etc. instead!
+    	}
 
         reset_pollin (handle);
         return;
     }
 
     rc = msg.close ();
-    errno_assert (rc == 0);
-    rc = msg.init_size (body_size);
-    errno_assert (rc == 0);
+//  errno_assert (rc == 0);
+    if (rc) {
+    	// should not assert/abort, output log etc. instead!
+    }
+	rc = msg.init_size (body_size);
+    if (!(rc == 0)) return; // saki errno_assert (rc == 0);
     memcpy (msg.data (), in_buffer + body_offset, body_size);
 
     // Push message body to session
@@ -400,7 +423,10 @@ void zmq::udp_engine_t::in_event ()
     // Message body doesn't fit in the pipe, drop and reset session state
     if (rc != 0) {
         rc = msg.close ();
-        errno_assert (rc == 0);
+// saki errno_assert (rc == 0);
+	    if (rc) {
+   			// should not assert/abort, output log etc. instead!
+    	}
 
         session->reset ();
         reset_pollin (handle);
@@ -408,8 +434,11 @@ void zmq::udp_engine_t::in_event ()
     }
 
     rc = msg.close ();
-    errno_assert (rc == 0);
-    session->flush ();
+// saki errno_assert (rc == 0);
+    if (rc) {
+   		// should not assert/abort, output log etc. instead!
+    }
+	session->flush ();
 }
 
 void zmq::udp_engine_t::restart_input ()

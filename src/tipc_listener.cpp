@@ -68,7 +68,7 @@ zmq::tipc_listener_t::tipc_listener_t (io_thread_t *io_thread_,
 
 zmq::tipc_listener_t::~tipc_listener_t ()
 {
-    zmq_assert (s == retired_fd);
+// saki    zmq_assert (s == retired_fd);
 }
 
 void zmq::tipc_listener_t::process_plug ()
@@ -200,9 +200,12 @@ error:
 
 void zmq::tipc_listener_t::close ()
 {
-    zmq_assert (s != retired_fd);
+    if (!(s != retired_fd)) return; // saki zmq_assert (s != retired_fd);
     int rc = ::close (s);
-    errno_assert (rc == 0);
+// saki    errno_assert (rc == 0);
+    if (rc) {
+   		// should not assert/abort, output log etc. instead!
+    }
     s = retired_fd;
     socket->event_closed (endpoint, s);
 }
@@ -222,10 +225,10 @@ zmq::fd_t zmq::tipc_listener_t::accept ()
     fd_t sock = ::accept (s, (struct sockaddr *) &ss, &ss_len);
 #endif
     if (sock == -1) {
-        errno_assert (errno == EAGAIN || errno == EWOULDBLOCK
+		errno_assert (errno == EAGAIN || errno == EWOULDBLOCK
                       || errno == ENOBUFS || errno == EINTR
                       || errno == ECONNABORTED || errno == EPROTO
-                      || errno == EMFILE || errno == ENFILE);
+                      || errno == EMFILE || errno == ENFILE || errno == EINVAL);	// saki
         return retired_fd;
     }
     /*FIXME Accept filters?*/

@@ -210,7 +210,7 @@ error:
 
 void zmq::vmci_listener_t::close ()
 {
-    zmq_assert (s != retired_fd);
+    if (!(s != retired_fd)) return; // zmq_assert (s != retired_fd);
 #ifdef ZMQ_HAVE_WINDOWS
     int rc = closesocket (s);
     wsa_assert (rc != SOCKET_ERROR);
@@ -227,7 +227,7 @@ zmq::fd_t zmq::vmci_listener_t::accept ()
     //  Accept one connection and deal with different failure modes.
     //  The situation where connection cannot be accepted due to insufficient
     //  resources is considered valid and treated by ignoring the connection.
-    zmq_assert (s != retired_fd);
+    if (!(s != retired_fd)) return retired_fd; // saki zmq_assert (s != retired_fd);
     fd_t sock = ::accept (s, NULL, NULL);
 
 #ifdef ZMQ_HAVE_WINDOWS
@@ -245,10 +245,10 @@ zmq::fd_t zmq::vmci_listener_t::accept ()
 #endif
 #else
     if (sock == -1) {
-        errno_assert (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR
-                      || errno == ECONNABORTED || errno == EPROTO
-                      || errno == ENOBUFS || errno == ENOMEM || errno == EMFILE
-                      || errno == ENFILE);
+		errno_assert (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR
+                    || errno == ECONNABORTED || errno == EPROTO
+                    || errno == ENOBUFS || errno == ENOMEM || errno == EMFILE
+                    || errno == ENFILE || errno = EINVAL);	// saki
         return retired_fd;
     }
 #endif

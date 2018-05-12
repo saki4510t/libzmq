@@ -293,7 +293,10 @@ int zmq::ipc_listener_t::close ()
     zmq_assert (s != retired_fd);
     int fd_for_event = s;
     int rc = ::close (s);
-    errno_assert (rc == 0);
+// saki errno_assert (rc == 0);
+    if (rc) {
+   		// should not assert/abort, output log etc. instead!
+    }
 
     s = retired_fd;
 
@@ -389,16 +392,16 @@ zmq::fd_t zmq::ipc_listener_t::accept ()
     //  Accept one connection and deal with different failure modes.
     //  The situation where connection cannot be accepted due to insufficient
     //  resources is considered valid and treated by ignoring the connection.
-    zmq_assert (s != retired_fd);
+    if (!(s != retired_fd)) return retired_fd; // saki zmq_assert (s != retired_fd);
 #if defined ZMQ_HAVE_SOCK_CLOEXEC && defined HAVE_ACCEPT4
     fd_t sock = ::accept4 (s, NULL, NULL, SOCK_CLOEXEC);
 #else
     fd_t sock = ::accept (s, NULL, NULL);
 #endif
     if (sock == -1) {
-        errno_assert (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR
-                      || errno == ECONNABORTED || errno == EPROTO
-                      || errno == ENFILE);
+		errno_assert (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR
+                    || errno == ECONNABORTED || errno == EPROTO
+                    || errno == ENFILE || errno == EINVAL);	// saki
         return retired_fd;
     }
 
@@ -407,14 +410,17 @@ zmq::fd_t zmq::ipc_listener_t::accept ()
     //  Race condition can cause socket not to be closed (if fork happens
     //  between accept and this point).
     int rc = fcntl (sock, F_SETFD, FD_CLOEXEC);
-    errno_assert (rc != -1);
+    if (!(rc != -1)) return retired_fd; // saki errno_assert (rc != -1);
 #endif
 
     // IPC accept() filters
 #if defined ZMQ_HAVE_SO_PEERCRED || defined ZMQ_HAVE_LOCAL_PEERCRED
     if (!filter (sock)) {
         int rc = ::close (sock);
-        errno_assert (rc == 0);
+// saki errno_assert (rc == 0);
+	    if (rc) {
+    		// should not assert/abort, output log etc. instead!
+    	}
         return retired_fd;
     }
 #endif
@@ -425,7 +431,10 @@ zmq::fd_t zmq::ipc_listener_t::accept ()
         wsa_assert (rc != SOCKET_ERROR);
 #else
         int rc = ::close (sock);
-        errno_assert (rc == 0);
+		// saki	errno_assert (rc == 0);
+	    if (rc) {
+    		// should not assert/abort, output log etc. instead!
+    	}
 #endif
         return retired_fd;
     }
