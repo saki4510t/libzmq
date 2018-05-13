@@ -66,17 +66,17 @@ zmq::ipc_connecter_t::ipc_connecter_t (class io_thread_t *io_thread_,
     session (session_),
     current_reconnect_ivl (options.reconnect_ivl)
 {
-    zmq_assert (addr);
-    zmq_assert (addr->protocol == "ipc");
+    if (!(addr)) return; // saki zmq_assert (addr);
+    if (!(addr->protocol == "ipc")) return; // saki zmq_assert (addr->protocol == "ipc");
     addr->to_string (endpoint);
     socket = session->get_socket ();
 }
 
 zmq::ipc_connecter_t::~ipc_connecter_t ()
 {
-    zmq_assert (!timer_started);
-    zmq_assert (!handle_valid);
-    zmq_assert (s == retired_fd);
+    if (!(!timer_started)) return; // saki zmq_assert (!timer_started);
+    if (!(!handle_valid)) return; // saki zmq_assert (!handle_valid);
+    if (!(s == retired_fd)) return; // saki zmq_assert (s == retired_fd);
 }
 
 void zmq::ipc_connecter_t::process_plug ()
@@ -141,7 +141,7 @@ void zmq::ipc_connecter_t::out_event ()
 
 void zmq::ipc_connecter_t::timer_event (int id_)
 {
-    zmq_assert (id_ == reconnect_timer_id);
+    if (!(id_ == reconnect_timer_id)) return; // zmq_assert (id_ == reconnect_timer_id);
     timer_started = false;
     start_connecting ();
 }
@@ -203,7 +203,7 @@ int zmq::ipc_connecter_t::get_new_reconnect_ivl ()
 
 int zmq::ipc_connecter_t::open ()
 {
-    zmq_assert (s == retired_fd);
+    if (!(s == retired_fd)) return -1; // saki zmq_assert (s == retired_fd);
 
     //  Create the socket.
     s = open_socket (AF_UNIX, SOCK_STREAM, 0);
@@ -234,9 +234,9 @@ int zmq::ipc_connecter_t::open ()
 
 int zmq::ipc_connecter_t::close ()
 {
-    zmq_assert (s != retired_fd);
+    if (!(s != retired_fd)) return -1; // saki zmq_assert (s != retired_fd);
     int rc = ::close (s);
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
     socket->event_closed (endpoint, s);
     s = retired_fd;
     return 0;
@@ -262,9 +262,9 @@ zmq::fd_t zmq::ipc_connecter_t::connect ()
         //  Assert if the error was caused by 0MQ bug.
         //  Networking problems are OK. No need to assert.
         errno = err;
-        errno_assert (errno == ECONNREFUSED || errno == ECONNRESET
-                      || errno == ETIMEDOUT || errno == EHOSTUNREACH
-                      || errno == ENETUNREACH || errno == ENETDOWN);
+// saki        errno_assert (errno == ECONNREFUSED || errno == ECONNRESET
+//                      || errno == ETIMEDOUT || errno == EHOSTUNREACH
+//                      || errno == ENETUNREACH || errno == ENETDOWN);
 
         return retired_fd;
     }
