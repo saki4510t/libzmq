@@ -60,7 +60,7 @@ zmq::udp_engine_t::udp_engine_t (const options_t &options_) :
 
 zmq::udp_engine_t::~udp_engine_t ()
 {
-    zmq_assert (!plugged);
+    if (!(!plugged)) return; // saki zmq_assert (!plugged);
 
     if (fd != retired_fd) {
 #ifdef ZMQ_HAVE_WINDOWS
@@ -71,6 +71,7 @@ zmq::udp_engine_t::~udp_engine_t ()
 // saki        errno_assert (rc == 0);
 	    if (rc) {
    			// should not assert/abort, output log etc. instead!
+   			LOGW("errno=%d", errno);
     	}
 #endif
         fd = retired_fd;
@@ -79,8 +80,8 @@ zmq::udp_engine_t::~udp_engine_t ()
 
 int zmq::udp_engine_t::init (address_t *address_, bool send_, bool recv_)
 {
-    zmq_assert (address_);
-    zmq_assert (send_ || recv_);
+    if (!(address_)) return -1; // saki zmq_assert (address_);
+    if (!(send_ || recv_)) return -1; // saki zmq_assert (send_ || recv_);
     send_enabled = send_;
     recv_enabled = recv_;
     address = address_;
@@ -97,11 +98,11 @@ int zmq::udp_engine_t::init (address_t *address_, bool send_, bool recv_)
 
 void zmq::udp_engine_t::plug (io_thread_t *io_thread_, session_base_t *session_)
 {
-    zmq_assert (!plugged);
+    if (!(!plugged)) return; // saki zmq_assert (!plugged);
     plugged = true;
 
-    zmq_assert (!session);
-    zmq_assert (session_);
+    if (!(!session)) return; // saki zmq_assert (!session);
+    if (!(session_)) return; // saki zmq_assert (session_);
     session = session_;
 
     //  Connect to I/O threads poller object.
@@ -131,7 +132,7 @@ void zmq::udp_engine_t::plug (io_thread_t *io_thread_, session_base_t *session_)
 #ifdef ZMQ_HAVE_WINDOWS
         wsa_assert (rc != SOCKET_ERROR);
 #else
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 #endif
 
 #ifdef ZMQ_HAVE_VXWORKS
@@ -144,7 +145,7 @@ void zmq::udp_engine_t::plug (io_thread_t *io_thread_, session_base_t *session_)
 #ifdef ZMQ_HAVE_WINDOWS
         wsa_assert (rc != SOCKET_ERROR);
 #else
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 #endif
 
         if (address->resolved.udp_addr->is_mcast ()) {
@@ -156,7 +157,7 @@ void zmq::udp_engine_t::plug (io_thread_t *io_thread_, session_base_t *session_)
 #ifdef ZMQ_HAVE_WINDOWS
             wsa_assert (rc != SOCKET_ERROR);
 #else
-            errno_assert (rc == 0);
+            if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 #endif
         }
         set_pollin (handle);
@@ -168,7 +169,7 @@ void zmq::udp_engine_t::plug (io_thread_t *io_thread_, session_base_t *session_)
 
 void zmq::udp_engine_t::terminate ()
 {
-    zmq_assert (plugged);
+    if (!(plugged)) return; // saki zmq_assert (plugged);
     plugged = false;
 
     rm_fd (handle);
@@ -189,7 +190,7 @@ void zmq::udp_engine_t::sockaddr_to_msg (zmq::msg_t *msg, sockaddr_in *addr)
     int size =
       (int) strlen (name) + (int) strlen (port) + 1 + 1; //  Colon + NULL
     int rc = msg->init_size (size);
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return; // saki errno_assert (rc == 0);
     msg->set_flags (msg_t::more);
     char *address = (char *) msg->data ();
 
@@ -247,7 +248,7 @@ void zmq::udp_engine_t::out_event ()
 {
     msg_t group_msg;
     int rc = session->pull_msg (&group_msg);
-    errno_assert (rc == 0 || (rc == -1 && errno == EAGAIN));
+    if (!(rc == 0 || (rc == -1 && errno == EAGAIN))) return; // errno_assert (rc == 0 || (rc == -1 && errno == EAGAIN));
 
     if (rc == 0) {
         msg_t body_msg;
@@ -263,17 +264,16 @@ void zmq::udp_engine_t::out_event ()
             //  We discard the message if address is not valid
             if (rc != 0) {
                 rc = group_msg.close ();
-// saki                errno_assert (rc == 0);
-			    if (rc) {
+			    if (rc) {	// saki errno_assert (rc == 0);
    					// should not assert/abort, output log etc. instead!
+   					LOGW("errno=%d", errno);
+   					return;
     			}
-
                 body_msg.close ();
-// saki                errno_assert (rc == 0);
-			    if (rc) {
+			    if (rc) {	// saki errno_assert (rc == 0);
    					// should not assert/abort, output log etc. instead!
+   					LOGW("errno=%d", errno);
     			}
-
                 return;
             }
 
@@ -293,6 +293,7 @@ void zmq::udp_engine_t::out_event ()
         // saki errno_assert (rc == 0);
 	    if (rc) {
    			// should not assert/abort, output log etc. instead!
+			LOGW("errno=%d", errno);
    			return;
     	}
 
@@ -300,9 +301,9 @@ void zmq::udp_engine_t::out_event ()
         // saki errno_assert (rc == 0);
 	    if (rc) {
    			// should not assert/abort, output log etc. instead!
+			LOGW("errno=%d", errno);
    			return;
     	}
-
 #ifdef ZMQ_HAVE_WINDOWS
         rc = sendto (fd, (const char *) out_buffer, (int) size, 0, out_address,
                      (int) out_addrlen);
@@ -310,10 +311,12 @@ void zmq::udp_engine_t::out_event ()
 #elif defined ZMQ_HAVE_VXWORKS
         rc = sendto (fd, (caddr_t) out_buffer, size, 0,
                      (sockaddr *) out_address, (int) out_addrlen);
-        errno_assert (rc != -1);
+        if (!(rc != -1)) return; // errno_assert (rc != -1);
 #else
         rc = sendto (fd, out_buffer, size, 0, out_address, out_addrlen);
-// saki errno_assert (rc != -1);
+		if (rc) {// saki errno_assert (rc != -1);
+			LOGW("errno=%d", errno);
+		}
 #endif
     } else
         reset_pollout (handle);
@@ -354,8 +357,8 @@ void zmq::udp_engine_t::in_event ()
     int nbytes = recvfrom (fd, (char *) in_buffer, MAX_UDP_MSG, 0,
                            (sockaddr *) &in_address, (int *) &in_addrlen);
     if (nbytes == -1) {
-        errno_assert (errno != EBADF && errno != EFAULT && errno != ENOMEM
-                      && errno != ENOTSOCK);
+// saki        errno_assert (errno != EBADF && errno != EFAULT && errno != ENOMEM
+//                      && errno != ENOTSOCK);
         return;
     }
 #else
@@ -364,6 +367,7 @@ void zmq::udp_engine_t::in_event ()
     if (nbytes == -1) {
 // saki	errno_assert (errno != EBADF && errno != EFAULT && errno != ENOMEM
 //                    && errno != ENOTSOCK);
+		LOGW("errno=%d", errno);
         return;
     }
 #endif
@@ -382,7 +386,10 @@ void zmq::udp_engine_t::in_event ()
         int group_size = in_buffer[0];
 
         rc = msg.init_size (group_size);
-        if (!(rc == 0)) return; // errno_assert (rc == 0);
+        if (!(rc == 0)) { // errno_assert (rc == 0);
+			LOGW("errno=%d", errno);
+			return;
+        }
         msg.set_flags (msg_t::more);
         memcpy (msg.data (), group_buffer, group_size);
 
@@ -395,27 +402,31 @@ void zmq::udp_engine_t::in_event ()
     }
     // Push group description to session
     rc = session->push_msg (&msg);
-    errno_assert (rc == 0 || (rc == -1 && errno == EAGAIN));
+    if (!(rc == 0 || (rc == -1 && errno == EAGAIN))) return; // errno_assert (rc == 0 || (rc == -1 && errno == EAGAIN));
 
     //  Group description message doesn't fit in the pipe, drop
     if (rc != 0) {
         rc = msg.close ();
-// saki    errno_assert (rc == 0);
-	    if (rc) {
+	    if (rc) {	// saki    errno_assert (rc == 0);
    			// should not assert/abort, output log etc. instead!
+   			LOGW("errno=%d", errno);
     	}
-
         reset_pollin (handle);
         return;
     }
 
     rc = msg.close ();
-//  errno_assert (rc == 0);
-    if (rc) {
+    if (!(rc == 0)) {	//  errno_assert (rc == 0);
     	// should not assert/abort, output log etc. instead!
+    	LOGW("errno=%d", errno);
+    	return;
     }
 	rc = msg.init_size (body_size);
-    if (!(rc == 0)) return; // saki errno_assert (rc == 0);
+    if (!(rc == 0)) {	//  errno_assert (rc == 0);
+    	// should not assert/abort, output log etc. instead!
+    	LOGW("errno=%d", errno);
+    	return;
+    }
     memcpy (msg.data (), in_buffer + body_offset, body_size);
 
     // Push message body to session
@@ -423,20 +434,21 @@ void zmq::udp_engine_t::in_event ()
     // Message body doesn't fit in the pipe, drop and reset session state
     if (rc != 0) {
         rc = msg.close ();
-// saki errno_assert (rc == 0);
-	    if (rc) {
+	    if (!(rc == 0)) {	// saki errno_assert (rc == 0);
    			// should not assert/abort, output log etc. instead!
+   			LOGW("errno=%d", errno);
+   			return;
     	}
-
         session->reset ();
         reset_pollin (handle);
         return;
     }
 
     rc = msg.close ();
-// saki errno_assert (rc == 0);
-    if (rc) {
+    if (!(rc == 0)) {	// saki errno_assert (rc == 0);
    		// should not assert/abort, output log etc. instead!
+		LOGW("errno=%d", errno);
+   		return;
     }
 	session->flush ();
 }
