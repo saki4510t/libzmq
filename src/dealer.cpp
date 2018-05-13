@@ -48,19 +48,19 @@ void zmq::dealer_t::xattach_pipe (pipe_t *pipe_, bool subscribe_to_all_)
 {
     LIBZMQ_UNUSED (subscribe_to_all_);
 
-    zmq_assert (pipe_);
+    if (!(pipe_)) return; // saki zmq_assert (pipe_);
 
     if (probe_router) {
         msg_t probe_msg_;
         int rc = probe_msg_.init ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 
         rc = pipe_->write (&probe_msg_);
         // zmq_assert (rc) is not applicable here, since it is not a bug.
         pipe_->flush ();
 
         rc = probe_msg_.close ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return;	// saki errno_assert (rc == 0);
     }
 
     fq.attach (pipe_);
