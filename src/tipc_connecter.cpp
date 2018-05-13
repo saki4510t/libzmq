@@ -76,9 +76,15 @@ zmq::tipc_connecter_t::tipc_connecter_t (class io_thread_t *io_thread_,
 
 zmq::tipc_connecter_t::~tipc_connecter_t ()
 {
-    zmq_assert (!timer_started);
-    zmq_assert (!handle_valid);
-    zmq_assert (s == retired_fd);
+    if (timer_started) { // saki zmq_assert (!timer_started);
+    	LOGW("unexpectedly timer_started is %d", timer_started)l
+    }
+    if (handle_valid) { // saki zmq_assert (!handle_valid);
+    	LOGW("unexpectedly handle_valid is %d", handle_valid);
+    }
+    if (s != retired_fd) { // saki zmq_assert (s == retired_fd);
+    	LOGW("unexpectedly s is %d instead of retired_fd", s);
+    }
 }
 
 void zmq::tipc_connecter_t::process_plug ()
@@ -143,7 +149,10 @@ void zmq::tipc_connecter_t::out_event ()
 
 void zmq::tipc_connecter_t::timer_event (int id_)
 {
-    zmq_assert (id_ == reconnect_timer_id);
+    if (!(id_ == reconnect_timer_id)) { // zmq_assert (id_ == reconnect_timer_id);
+    	LOGW("unexpected id=%d", id_);
+    	return;
+    }
     timer_started = false;
     start_connecting ();
 }
@@ -205,7 +214,10 @@ int zmq::tipc_connecter_t::get_new_reconnect_ivl ()
 
 int zmq::tipc_connecter_t::open ()
 {
-    zmq_assert (s == retired_fd);
+    if (!(s == retired_fd)) } // saki zmq_assert (s == retired_fd);
+    	LOGW("unexpected socket id,%d", s);
+    	return -1;
+    }
 
     // Cannot connect to random tipc addresses
     if (addr->resolved.tipc_addr->is_random ()) {
@@ -243,10 +255,16 @@ int zmq::tipc_connecter_t::open ()
 
 void zmq::tipc_connecter_t::close ()
 {
-    zmq_assert (s != retired_fd);
+    if (!(s != retired_fd)) { // saki zmq_assert (s != retired_fd);
+    	LOGW("unexpected socket id,%d", s);
+    	return;
+    }
     int rc = ::close (s);
-    errno_assert (rc == 0);
-    socket->event_closed (endpoint, s);
+    if (!rc) { // saki errno_assert (rc == 0);
+	    socket->event_closed (endpoint, s);
+    } else {
+    	LOGW("unexpected result, rc=%d", rc);
+    }
     s = retired_fd;
 }
 
@@ -267,10 +285,10 @@ zmq::fd_t zmq::tipc_connecter_t::connect ()
         //  Assert if the error was caused by 0MQ bug.
         //  Networking problems are OK. No need to assert.
         errno = err;
-        errno_assert (errno == ECONNREFUSED || errno == ECONNRESET
-                      || errno == ETIMEDOUT || errno == EHOSTUNREACH
-                      || errno == ENETUNREACH || errno == ENETDOWN);
-
+// saki errno_assert (errno == ECONNREFUSED || errno == ECONNRESET
+//                    || errno == ETIMEDOUT || errno == EHOSTUNREACH
+//                    || errno == ENETUNREACH || errno == ENETDOWN);
+		LOGW("errno=%d", errno);
         return retired_fd;
     }
     fd_t result = s;

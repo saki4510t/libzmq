@@ -87,10 +87,18 @@ zmq::tcp_connecter_t::tcp_connecter_t (class io_thread_t *io_thread_,
 
 zmq::tcp_connecter_t::~tcp_connecter_t ()
 {
-    zmq_assert (!connect_timer_started);
-    zmq_assert (!reconnect_timer_started);
-    zmq_assert (!handle);
-    zmq_assert (s == retired_fd);
+    if (connect_timer_started) {// saki zmq_assert (!connect_timer_started);
+    	LOGW("unexpectedly connect_timer_started is %d", connect_timer_started);
+    }
+    if (reconnect_timer_started) { // saki zmq_assert (!reconnect_timer_started);
+    	LOGW("unexpectedly reconnect_timer_started is %d", reconnect_timer_started);
+    }
+    if (handle) {// saki zmq_assert (!handle);
+    	LOGW("unexpectedly handle is %p", handle);
+    }
+    if (s != retired_fd) { // saki zmq_assert (s == retired_fd);
+    	LOGW("unexpectedly s is %d instead of retired_fd", s);
+    }
 }
 
 void zmq::tcp_connecter_t::process_plug ()

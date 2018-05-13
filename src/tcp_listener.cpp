@@ -73,8 +73,8 @@ zmq::tcp_listener_t::tcp_listener_t (io_thread_t *io_thread_,
 
 zmq::tcp_listener_t::~tcp_listener_t ()
 {
-    zmq_assert (s == retired_fd);
-    zmq_assert (!handle);
+// saki    zmq_assert (s == retired_fd);
+// saki    zmq_assert (!handle);
 }
 
 void zmq::tcp_listener_t::process_plug ()
@@ -127,7 +127,7 @@ void zmq::tcp_listener_t::in_event ()
     //  Create and launch a session object.
     session_base_t *session =
       session_base_t::create (io_thread, false, socket, options, NULL);
-    errno_assert (session);
+    errno_assert (session);	// saki, will be alloc_assert ?
     session->inc_seqnum ();
     launch_child (session);
     send_attach (session, engine, false);
@@ -144,7 +144,10 @@ void zmq::tcp_listener_t::close ()
     int rc = ::close (s);
 // saki errno_assert (rc == 0);
     if (rc) {
+    	LOGD("errno=%d", errno);
    		// should not assert/abort, output log etc. instead!
+	    s = retired_fd;
+   		return;
     }
 #endif
     socket->event_closed (endpoint, s);
@@ -247,7 +250,10 @@ int zmq::tcp_listener_t::set_address (const char *addr_)
     errno_assert (rc == 0);
 #else
     rc = setsockopt (s, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof (int));
-    errno_assert (rc == 0);
+    if (!(rc == 0)) {	// saki errno_assert (rc == 0);
+    	LOGD("errno=%d", errno);
+    	return -1;
+    }
 #endif
 
     //  Bind the socket to the network interface and port.
@@ -322,10 +328,11 @@ zmq::fd_t zmq::tcp_listener_t::accept ()
 #endif
 #else
     if (sock == -1) {
-        errno_assert (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR
-                   || errno == ECONNABORTED || errno == EPROTO
-                   || errno == ENOBUFS || errno == ENOMEM || errno == EMFILE
-                   || errno == ENFILE || errno == EINVAL);	// saki
+    	LOGD("errno=%d", errno);
+//      errno_assert (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR
+//                 || errno == ECONNABORTED || errno == EPROTO
+//                 || errno == ENOBUFS || errno == ENOMEM || errno == EMFILE
+//                 || errno == ENFILE || errno == EINVAL);	// saki
         return retired_fd;
     }
 #endif
@@ -356,6 +363,7 @@ zmq::fd_t zmq::tcp_listener_t::accept ()
             int rc = ::close (sock);
 // saki     errno_assert (rc == 0);
 		    if (rc) {
+		    	LOGD("errno=%d", errno);
 		   		// should not assert/abort, output log etc. instead!
     		}
 #endif
@@ -369,8 +377,8 @@ zmq::fd_t zmq::tcp_listener_t::accept ()
         wsa_assert (rc != SOCKET_ERROR);
 #else
         int rc = ::close (sock);
-// saki errno_assert (rc == 0);
-	    if (rc) {
+	    if (rc) {	// saki errno_assert (rc == 0);
+	    	LOGD("errno=%d", errno);
    			// should not assert/abort, output log etc. instead!
     	}
 #endif
