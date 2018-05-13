@@ -45,20 +45,20 @@ zmq::dish_t::dish_t (class ctx_t *parent_, uint32_t tid_, int sid_) :
     options.linger.store (0);
 
     int rc = message.init ();
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 }
 
 zmq::dish_t::~dish_t ()
 {
-    int rc = message.close ();
-    errno_assert (rc == 0);
+    /*int rc =*/ message.close ();
+// saki    errno_assert (rc == 0);
 }
 
 void zmq::dish_t::xattach_pipe (pipe_t *pipe_, bool subscribe_to_all_)
 {
     LIBZMQ_UNUSED (subscribe_to_all_);
 
-    zmq_assert (pipe_);
+    if (!(pipe_)) return; // saki zmq_assert (pipe_);
     fq.attach (pipe_);
     dist.attach (pipe_);
 
@@ -109,17 +109,17 @@ int zmq::dish_t::xjoin (const char *group_)
 
     msg_t msg;
     int rc = msg.init_join ();
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
     rc = msg.set_group (group_);
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
     int err = 0;
     rc = dist.send_to_all (&msg);
     if (rc != 0)
         err = errno;
     int rc2 = msg.close ();
-    errno_assert (rc2 == 0);
+    if (!(rc2 == 0)) return -1; // saki errno_assert (rc2 == 0);
     if (rc != 0)
         errno = err;
     return rc;
@@ -146,17 +146,17 @@ int zmq::dish_t::xleave (const char *group_)
 
     msg_t msg;
     int rc = msg.init_leave ();
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
     rc = msg.set_group (group_);
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
     int err = 0;
     rc = dist.send_to_all (&msg);
     if (rc != 0)
         err = errno;
     int rc2 = msg.close ();
-    errno_assert (rc2 == 0);
+    if (!(rc2 == 0)) return -1; // saki errno_assert (rc2 == 0);
     if (rc != 0)
         errno = err;
     return rc;
@@ -181,7 +181,7 @@ int zmq::dish_t::xrecv (msg_t *msg_)
     //  return it straight ahead.
     if (has_message) {
         int rc = msg_->move (message);
-        errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
         has_message = false;
         return 0;
     }
@@ -217,7 +217,7 @@ bool zmq::dish_t::xhas_in ()
         //  If there's no message available, return immediately.
         //  The same when error occurs.
         if (rc != 0) {
-            errno_assert (errno == EAGAIN);
+// saki          errno_assert (errno == EAGAIN);
             return false;
         }
 
@@ -242,10 +242,10 @@ void zmq::dish_t::send_subscriptions (pipe_t *pipe_)
          it != subscriptions.end (); ++it) {
         msg_t msg;
         int rc = msg.init_join ();
-        errno_assert (rc == 0);
+	    if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 
         rc = msg.set_group (it->c_str ());
-        errno_assert (rc == 0);
+	    if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 
         //  Send it to the pipe.
         pipe_->write (&msg);
@@ -286,7 +286,7 @@ int zmq::dish_session_t::push_msg (msg_t *msg_)
         state = body;
 
         int rc = msg_->init ();
-        errno_assert (rc == 0);
+	    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
         return 0;
     } else {
         const char *group_setting = msg_->group ();
@@ -296,11 +296,11 @@ int zmq::dish_session_t::push_msg (msg_t *msg_)
 
         //  Set the message group
         rc = msg_->set_group ((char *) group_msg.data (), group_msg.size ());
-        errno_assert (rc == 0);
+	    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
         //  We set the group, so we don't need the group_msg anymore
         rc = group_msg.close ();
-        errno_assert (rc == 0);
+	    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
     has_group:
         //  Thread safe socket doesn't support multipart messages
         if ((msg_->flags () & msg_t::more) == msg_t::more) {
@@ -335,12 +335,12 @@ int zmq::dish_session_t::pull_msg (msg_t *msg_)
 
         if (msg_->is_join ()) {
             rc = command.init_size (group_length + 5);
-            errno_assert (rc == 0);
+		    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
             offset = 5;
             memcpy (command.data (), "\4JOIN", 5);
         } else {
             rc = command.init_size (group_length + 6);
-            errno_assert (rc == 0);
+		    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
             offset = 6;
             memcpy (command.data (), "\5LEAVE", 6);
         }
@@ -353,7 +353,7 @@ int zmq::dish_session_t::pull_msg (msg_t *msg_)
 
         //  Close the join message
         rc = msg_->close ();
-        errno_assert (rc == 0);
+	    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
         *msg_ = command;
 
