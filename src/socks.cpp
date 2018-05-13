@@ -101,7 +101,7 @@ zmq::socks_choice_decoder_t::socks_choice_decoder_t () : bytes_read (0)
 
 int zmq::socks_choice_decoder_t::input (fd_t fd_)
 {
-    zmq_assert (bytes_read < 2);
+    if (!(bytes_read < 2)) return -1; // saki zmq_assert (bytes_read < 2);
     const int rc = tcp_read (fd_, buf + bytes_read, 2 - bytes_read);
     if (rc > 0) {
         bytes_read += static_cast<size_t> (rc);
@@ -118,7 +118,7 @@ bool zmq::socks_choice_decoder_t::message_ready () const
 
 zmq::socks_choice_t zmq::socks_choice_decoder_t::decode ()
 {
-    zmq_assert (message_ready ());
+    if (!(message_ready ())) return socks_choice_t(0); // saki zmq_assert (message_ready ());
     return socks_choice_t (buf[1]);
 }
 
@@ -135,7 +135,7 @@ zmq::socks_request_t::socks_request_t (uint8_t command_,
     hostname (hostname_),
     port (port_)
 {
-    zmq_assert (hostname_.size () <= UINT8_MAX);
+    if (!(hostname_.size () <= UINT8_MAX)) return; // zmq_assert (hostname_.size () <= UINT8_MAX);
 }
 
 zmq::socks_request_encoder_t::socks_request_encoder_t () :
@@ -146,7 +146,7 @@ zmq::socks_request_encoder_t::socks_request_encoder_t () :
 
 void zmq::socks_request_encoder_t::encode (const socks_request_t &req)
 {
-    zmq_assert (req.hostname.size () <= UINT8_MAX);
+    if (!(req.hostname.size () <= UINT8_MAX)) return; // saki zmq_assert (req.hostname.size () <= UINT8_MAX);
 
     unsigned char *ptr = buf;
     *ptr++ = 0x05;
@@ -234,7 +234,7 @@ int zmq::socks_response_decoder_t::input (fd_t fd_)
         n = 5 - bytes_read;
     else {
         const uint8_t atyp = buf[3];
-        zmq_assert (atyp == 0x01 || atyp == 0x03 || atyp == 0x04);
+        if (!(atyp == 0x01 || atyp == 0x03 || atyp == 0x04)) return -1; // saki zmq_assert (atyp == 0x01 || atyp == 0x03 || atyp == 0x04);
         if (atyp == 0x01)
             n = 3 + 2;
         else if (atyp == 0x03)
@@ -268,7 +268,7 @@ bool zmq::socks_response_decoder_t::message_ready () const
         return false;
     else {
         const uint8_t atyp = buf[3];
-        zmq_assert (atyp == 0x01 || atyp == 0x03 || atyp == 0x04);
+        if (!(atyp == 0x01 || atyp == 0x03 || atyp == 0x04)) return false; // saki zmq_assert (atyp == 0x01 || atyp == 0x03 || atyp == 0x04);
         if (atyp == 0x01)
             return bytes_read == 10;
         else if (atyp == 0x03)
@@ -280,7 +280,7 @@ bool zmq::socks_response_decoder_t::message_ready () const
 
 zmq::socks_response_t zmq::socks_response_decoder_t::decode ()
 {
-    zmq_assert (message_ready ());
+    if (!(message_ready ())) return socks_response_t(0, "", 0); // saki zmq_assert (message_ready ());
     return socks_response_t (buf[1], "", 0);
 }
 
