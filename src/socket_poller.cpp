@@ -300,7 +300,7 @@ void zmq::socket_poller_t::rebuild ()
                     size_t fd_size = sizeof (zmq::fd_t);
                     int rc = it->socket->getsockopt (
                       ZMQ_FD, &pollfds[item_nbr].fd, &fd_size);
-                    zmq_assert (rc == 0);
+                    if (!(rc == 0)) return; // saki zmq_assert (rc == 0);
 
                     pollfds[item_nbr].events = POLLIN;
                     item_nbr++;
@@ -325,7 +325,7 @@ void zmq::socket_poller_t::rebuild ()
 
     //  Ensure we do not attempt to select () on more than FD_SETSIZE
     //  file descriptors.
-    zmq_assert (items.size () <= FD_SETSIZE);
+    if (!(items.size () <= FD_SETSIZE)) return; // saki zmq_assert (items.size () <= FD_SETSIZE);
 
     poll_size = 0;
 
@@ -353,7 +353,7 @@ void zmq::socket_poller_t::rebuild ()
                     size_t fd_size = sizeof (zmq::fd_t);
                     int rc =
                       it->socket->getsockopt (ZMQ_FD, &notify_fd, &fd_size);
-                    zmq_assert (rc == 0);
+                    if (!(rc == 0)) return; // saki zmq_assert (rc == 0);
 
                     FD_SET (notify_fd, &pollset_in);
                     if (maxfd < notify_fd)
@@ -571,7 +571,7 @@ int zmq::socket_poller_t::wait (zmq::socket_poller_t::event_t *events_,
             if (rc == -1 && errno == EINTR) {
                 return -1;
             }
-            errno_assert (rc >= 0);
+            if (!(rc >= 0)) return -1; // saki errno_assert (rc >= 0);
             break;
         }
 
@@ -648,7 +648,7 @@ int zmq::socket_poller_t::wait (zmq::socket_poller_t::event_t *events_,
             memcpy (&errset, &pollset_err, sizeof (fd_set));
             int rc = select (maxfd + 1, &inset, &outset, &errset, ptimeout);
             if (unlikely (rc == -1)) {
-                errno_assert (errno == EINTR || errno == EBADF);
+                // saki errno_assert (errno == EINTR || errno == EBADF);
                 return -1;
             }
 #endif
