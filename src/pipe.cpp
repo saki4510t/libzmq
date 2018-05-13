@@ -110,14 +110,14 @@ zmq::pipe_t::~pipe_t ()
 void zmq::pipe_t::set_peer (pipe_t *peer_)
 {
     //  Peer can be set once only.
-    zmq_assert (!peer);
+    if (!!peer) return; // saki zmq_assert (!peer);
     peer = peer_;
 }
 
 void zmq::pipe_t::set_event_sink (i_pipe_events *sink_)
 {
     // Sink can be set once only.
-    zmq_assert (!sink);
+    if (!(!sink)) return; // zmq_assert (!sink);
     sink = sink_;
 }
 
@@ -166,7 +166,7 @@ bool zmq::pipe_t::check_read ()
     if (inpipe->probe (is_delimiter)) {
         msg_t msg;
         bool ok = inpipe->read (&msg);
-        zmq_assert (ok);
+        if (!(ok)) return false; // saki zmq_assert (ok);
         process_delimiter ();
         return false;
     }
@@ -193,7 +193,7 @@ read_message:
           static_cast<const unsigned char *> (msg_->data ());
         credential.set (data, msg_->size ());
         const int rc = msg_->close ();
-        zmq_assert (rc == 0);
+        if (!(rc == 0)) return false; // saki zmq_assert (rc == 0);
         goto read_message;
     }
 
@@ -247,9 +247,9 @@ void zmq::pipe_t::rollback ()
     msg_t msg;
     if (outpipe) {
         while (outpipe->unwrite (&msg)) {
-            zmq_assert (msg.flags () & msg_t::more);
+            if (!(msg.flags () & msg_t::more)) return; // saki zmq_assert (msg.flags () & msg_t::more);
             int rc = msg.close ();
-            errno_assert (rc == 0);
+            if (!(rc == 0)) return; // saki errno_assert (rc == 0);
         }
     }
 }
@@ -287,19 +287,19 @@ void zmq::pipe_t::process_hiccup (void *pipe_)
 {
     //  Destroy old outpipe. Note that the read end of the pipe was already
     //  migrated to this thread.
-    zmq_assert (outpipe);
+    if (!(outpipe)) return; // saki zmq_assert (outpipe);
     outpipe->flush ();
     msg_t msg;
     while (outpipe->read (&msg)) {
         if (!(msg.flags () & msg_t::more))
             msgs_written--;
         int rc = msg.close ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return; // saki errno_assert (rc == 0);
     }
     LIBZMQ_DELETE (outpipe);
 
     //  Plug in the new outpipe.
-    zmq_assert (pipe_);
+    if (!(pipe_)) return; // saki zmq_assert (pipe_);
     outpipe = (upipe_t *) pipe_;
     out_active = true;
 
@@ -310,8 +310,10 @@ void zmq::pipe_t::process_hiccup (void *pipe_)
 
 void zmq::pipe_t::process_pipe_term ()
 {
-    zmq_assert (state == active || state == delimiter_received
-                || state == term_req_sent1);
+    if (!(state == active || state == delimiter_received
+                         || state == term_req_sent1)) return;
+// saki    zmq_assert (state == active || state == delimiter_received
+//                || state == term_req_sent1);
 
     //  This is the simple case of peer-induced termination. If there are no
     //  more pending messages to read, or if the pipe was configured to drop
@@ -349,7 +351,7 @@ void zmq::pipe_t::process_pipe_term ()
 void zmq::pipe_t::process_pipe_term_ack ()
 {
     //  Notify the user that all the references to the pipe should be dropped.
-    zmq_assert (sink);
+    if (!(sink)) return; // saki zmq_assert (sink);
     sink->pipe_terminated (this);
 
     //  In term_ack_sent and term_req_sent2 states there's nothing to do.
@@ -360,7 +362,7 @@ void zmq::pipe_t::process_pipe_term_ack ()
         outpipe = NULL;
         send_pipe_term_ack (peer);
     } else
-        zmq_assert (state == term_ack_sent || state == term_req_sent2);
+        if (!(state == term_ack_sent || state == term_req_sent2)) return; // saki zmq_assert (state == term_ack_sent || state == term_req_sent2);
 
     //  We'll deallocate the inbound pipe, the peer will deallocate the outbound
     //  pipe (which is an inbound pipe from its point of view).
@@ -372,7 +374,7 @@ void zmq::pipe_t::process_pipe_term_ack ()
         msg_t msg;
         while (inpipe->read (&msg)) {
             int rc = msg.close ();
-            errno_assert (rc == 0);
+            if (!(rc == 0)) return; // saki errno_assert (rc == 0);
         }
     }
 
@@ -433,7 +435,7 @@ void zmq::pipe_t::terminate (bool delay_)
     }
     //  There are no other states.
     else {
-        zmq_assert (false);
+        return; // saki zmq_assert (false);
     }
 
     //  Stop outbound flow of messages.
@@ -482,7 +484,7 @@ int zmq::pipe_t::compute_lwm (int hwm_)
 
 void zmq::pipe_t::process_delimiter ()
 {
-    zmq_assert (state == active || state == waiting_for_delimiter);
+    if (!(state == active || state == waiting_for_delimiter)) return; // saki zmq_assert (state == active || state == waiting_for_delimiter);
 
     if (state == active)
         state = delimiter_received;
