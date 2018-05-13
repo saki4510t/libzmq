@@ -73,8 +73,12 @@ zmq::tcp_listener_t::tcp_listener_t (io_thread_t *io_thread_,
 
 zmq::tcp_listener_t::~tcp_listener_t ()
 {
-// saki    zmq_assert (s == retired_fd);
-// saki    zmq_assert (!handle);
+	if (!(s == retired_fd)) { // saki zmq_assert (s == retired_fd);
+		LOGW("unexpected s value,%d", s);
+	}
+	if (!(!handle)) {; // saki zmq_assert (!handle);
+		LOGW("unexpected handle value,%p", handle);
+	}
 }
 
 void zmq::tcp_listener_t::process_plug ()
@@ -127,7 +131,7 @@ void zmq::tcp_listener_t::in_event ()
     //  Create and launch a session object.
     session_base_t *session =
       session_base_t::create (io_thread, false, socket, options, NULL);
-    errno_assert (session);	// saki, will be alloc_assert ?
+    if (!(session)) return; // saki errno_assert (session);
     session->inc_seqnum ();
     launch_child (session);
     send_attach (session, engine, false);
@@ -142,8 +146,7 @@ void zmq::tcp_listener_t::close ()
     wsa_assert (rc != SOCKET_ERROR);
 #else
     int rc = ::close (s);
-// saki errno_assert (rc == 0);
-    if (rc) {
+    if (rc) {	// saki errno_assert (rc == 0);
     	LOGD("errno=%d", errno);
    		// should not assert/abort, output log etc. instead!
 	    s = retired_fd;
@@ -252,7 +255,7 @@ int zmq::tcp_listener_t::set_address (const char *addr_)
     rc = setsockopt (s, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof (int));
     if (!(rc == 0)) {	// saki errno_assert (rc == 0);
     	LOGD("errno=%d", errno);
-    	return -1;
+		goto error;
     }
 #endif
 
@@ -361,8 +364,7 @@ zmq::fd_t zmq::tcp_listener_t::accept ()
             wsa_assert (rc != SOCKET_ERROR);
 #else
             int rc = ::close (sock);
-// saki     errno_assert (rc == 0);
-		    if (rc) {
+		    if (rc) {	// saki     errno_assert (rc == 0);
 		    	LOGD("errno=%d", errno);
 		   		// should not assert/abort, output log etc. instead!
     		}
