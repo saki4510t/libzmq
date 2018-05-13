@@ -37,7 +37,7 @@ zmq::mailbox_t::mailbox_t ()
     //  polling on the associated file descriptor it will get woken up when
     //  new command is posted.
     const bool ok = cpipe.read (NULL);
-    zmq_assert (!ok);
+    if (!(!(ok))) return; // zmq_assert (!ok);
     active = false;
 }
 
@@ -80,14 +80,14 @@ int zmq::mailbox_t::recv (command_t *cmd_, int timeout_)
     //  Wait for signal from the command sender.
     int rc = signaler.wait (timeout_);
     if (rc == -1) {
-        errno_assert (errno == EAGAIN || errno == EINTR);
+        // saki errno_assert (errno == EAGAIN || errno == EINTR);
         return -1;
     }
 
     //  Receive the signal.
     rc = signaler.recv_failable ();
     if (rc == -1) {
-        errno_assert (errno == EAGAIN);
+        // saki errno_assert (errno == EAGAIN);
         return -1;
     }
 
@@ -96,7 +96,7 @@ int zmq::mailbox_t::recv (command_t *cmd_, int timeout_)
 
     //  Get a command.
     const bool ok = cpipe.read (cmd_);
-    zmq_assert (ok);
+    if (!(ok)) return -1; // saki zmq_assert (ok);
     return 0;
 }
 
