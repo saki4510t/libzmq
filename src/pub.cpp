@@ -45,7 +45,7 @@ zmq::pub_t::~pub_t ()
 
 void zmq::pub_t::xattach_pipe (pipe_t *pipe_, bool subscribe_to_all_)
 {
-    zmq_assert (pipe_);
+    if (!(pipe_)) return; // saki zmq_assert (pipe_);
 
     //  Don't delay pipe termination as there is no one
     //  to receive the delimiter.
