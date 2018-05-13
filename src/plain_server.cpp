@@ -50,7 +50,7 @@ zmq::plain_server_t::plain_server_t (session_base_t *session_,
     //  Given this is a backward-incompatible change, it's behind a socket
     //  option disabled by default.
     if (options.zap_enforce_domain)
-        zmq_assert (zap_required ());
+        if (!(zap_required ())) return; // saki zmq_assert (zap_required ());
 }
 
 zmq::plain_server_t::~plain_server_t ()
@@ -105,9 +105,9 @@ int zmq::plain_server_t::process_handshake_command (msg_t *msg_)
     }
     if (rc == 0) {
         rc = msg_->close ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
         rc = msg_->init ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
     }
     return rc;
 }
@@ -205,7 +205,7 @@ int zmq::plain_server_t::process_hello (msg_t *msg_)
 int zmq::plain_server_t::produce_welcome (msg_t *msg_) const
 {
     const int rc = msg_->init_size (8);
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
     memcpy (msg_->data (), "\x07WELCOME", 8);
     return 0;
 }
@@ -236,9 +236,9 @@ int zmq::plain_server_t::produce_ready (msg_t *msg_) const
 
 int zmq::plain_server_t::produce_error (msg_t *msg_) const
 {
-    zmq_assert (status_code.length () == 3);
+    if (!(status_code.length () == 3)) return -1; // saki zmq_assert (status_code.length () == 3);
     const int rc = msg_->init_size (6 + 1 + status_code.length ());
-    zmq_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki zmq_assert (rc == 0);
     char *msg_data = static_cast<char *> (msg_->data ());
     memcpy (msg_data, "\5ERROR", 6);
     msg_data[6] = (char) status_code.length ();
