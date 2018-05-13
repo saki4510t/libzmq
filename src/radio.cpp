@@ -51,7 +51,7 @@ void zmq::radio_t::xattach_pipe (pipe_t *pipe_, bool subscribe_to_all_)
 {
     LIBZMQ_UNUSED (subscribe_to_all_);
 
-    zmq_assert (pipe_);
+    if (!(pipe_)) return; // saki zmq_assert (pipe_);
 
     //  Don't delay pipe termination as there is no one
     //  to receive the delimiter.
@@ -227,15 +227,15 @@ int zmq::radio_session_t::push_msg (msg_t *msg_)
         else
             return session_base_t::push_msg (msg_);
 
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
         //  Set the group
         rc = join_leave_msg.set_group (group, group_length);
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
         //  Close the current command
         rc = msg_->close ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
         //  Push the join or leave command
         *msg_ = join_leave_msg;
@@ -256,7 +256,7 @@ int zmq::radio_session_t::pull_msg (msg_t *msg_)
 
         //  First frame is the group
         rc = msg_->init_size (length);
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
         msg_->set_flags (msg_t::more);
         memcpy (msg_->data (), group, length);
 
