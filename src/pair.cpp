@@ -44,14 +44,14 @@ zmq::pair_t::pair_t (class ctx_t *parent_, uint32_t tid_, int sid_) :
 
 zmq::pair_t::~pair_t ()
 {
-    zmq_assert (!pipe);
+// saki    zmq_assert (!pipe);
 }
 
 void zmq::pair_t::xattach_pipe (pipe_t *pipe_, bool subscribe_to_all_)
 {
     LIBZMQ_UNUSED (subscribe_to_all_);
 
-    zmq_assert (pipe_ != NULL);
+    if (!(pipe_ != NULL)) return; // saki zmq_assert (pipe_ != NULL);
 
     //  ZMQ_PAIR socket can only be connected to a single peer.
     //  The socket rejects any further connection requests.
@@ -96,7 +96,7 @@ int zmq::pair_t::xsend (msg_t *msg_)
 
     //  Detach the original message from the data buffer.
     int rc = msg_->init ();
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
     return 0;
 }
@@ -105,12 +105,12 @@ int zmq::pair_t::xrecv (msg_t *msg_)
 {
     //  Deallocate old content of the message.
     int rc = msg_->close ();
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
     if (!pipe || !pipe->read (msg_)) {
         //  Initialise the output parameter to be a 0-byte message.
         rc = msg_->init ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
         errno = EAGAIN;
         return -1;
