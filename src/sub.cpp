@@ -57,7 +57,7 @@ int zmq::sub_t::xsetsockopt (int option_,
     //  Create the subscription message.
     msg_t msg;
     int rc = msg.init_size (optvallen_ + 1);
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
     unsigned char *data = (unsigned char *) msg.data ();
     *data = (option_ == ZMQ_SUBSCRIBE);
     //  We explicitly allow a NULL subscription with size zero
