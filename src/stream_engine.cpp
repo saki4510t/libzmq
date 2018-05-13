@@ -102,7 +102,7 @@ zmq::stream_engine_t::stream_engine_t (fd_t fd_,
     socket (NULL)
 {
     int rc = tx_msg.init ();
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 
     //  Put the socket into non-blocking mode.
     unblock_socket (s);
@@ -145,7 +145,7 @@ zmq::stream_engine_t::stream_engine_t (fd_t fd_,
 
 zmq::stream_engine_t::~stream_engine_t ()
 {
-    zmq_assert (!plugged);
+    if (!(!plugged)) return; // saki zmq_assert (!plugged);
 
     if (s != retired_fd) {
 #ifdef ZMQ_HAVE_WINDOWS
@@ -159,13 +159,13 @@ zmq::stream_engine_t::~stream_engine_t ()
         if (rc == -1 && errno == ECONNRESET)
             rc = 0;
 #endif
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 #endif
         s = retired_fd;
     }
 
     int rc = tx_msg.close ();
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 
     //  Drop reference to metadata and destroy it if we are
     //  the only user.
@@ -183,12 +183,12 @@ zmq::stream_engine_t::~stream_engine_t ()
 void zmq::stream_engine_t::plug (io_thread_t *io_thread_,
                                  session_base_t *session_)
 {
-    zmq_assert (!plugged);
+    if (!(!plugged)) return; // saki zmq_assert (!plugged);
     plugged = true;
 
     //  Connect to session object.
-    zmq_assert (!session);
-    zmq_assert (session_);
+    if (!(!session)) return; // saki zmq_assert (!session);
+    if (!(session_)) return; // saki zmq_assert (session_);
     session = session_;
     socket = session->get_socket ();
 
@@ -214,7 +214,7 @@ void zmq::stream_engine_t::plug (io_thread_t *io_thread_,
         properties_t properties;
         if (init_properties (properties)) {
             //  Compile metadata.
-            zmq_assert (metadata == NULL);
+            if (!(metadata == NULL)) return; // saki zmq_assert (metadata == NULL);
             metadata = new (std::nothrow) metadata_t (properties);
             alloc_assert (metadata);
         }
@@ -249,7 +249,7 @@ void zmq::stream_engine_t::plug (io_thread_t *io_thread_,
 
 void zmq::stream_engine_t::unplug ()
 {
-    zmq_assert (plugged);
+    if (!(plugged)) return; // saki zmq_assert (plugged);
     plugged = false;
 
     //  Cancel all timers.
@@ -290,14 +290,14 @@ void zmq::stream_engine_t::terminate ()
 
 void zmq::stream_engine_t::in_event ()
 {
-    zmq_assert (!io_error);
+    if (!(!io_error)) return; // saki zmq_assert (!io_error);
 
     //  If still handshaking, receive and process the greeting message.
     if (unlikely (handshaking))
         if (!handshake ())
             return;
 
-    zmq_assert (decoder);
+    if (!(decoder)) return; // saki zmq_assert (decoder);
 
     //  If there has been an I/O error, stop polling.
     if (input_stopped) {
@@ -340,7 +340,7 @@ void zmq::stream_engine_t::in_event ()
 
     while (insize > 0) {
         rc = decoder->decode (inpos, insize, processed);
-        zmq_assert (processed <= insize);
+        if (!(processed <= insize)) return; // saki zmq_assert (processed <= insize);
         inpos += processed;
         insize -= processed;
         if (rc == 0 || rc == -1)
@@ -366,7 +366,7 @@ void zmq::stream_engine_t::in_event ()
 
 void zmq::stream_engine_t::out_event ()
 {
-    zmq_assert (!io_error);
+    if (!(!io_error)) return; // saki zmq_assert (!io_error);
 
     //  If write buffer is empty, try to read new data from the encoder.
     if (!outsize) {
@@ -374,7 +374,7 @@ void zmq::stream_engine_t::out_event ()
         //  data to send, the poller may invoke out_event one
         //  more time due to 'speculative write' optimisation.
         if (unlikely (encoder == NULL)) {
-            zmq_assert (handshaking);
+            if (!(handshaking)) return; // saki zmq_assert (handshaking);
             return;
         }
 
@@ -387,7 +387,7 @@ void zmq::stream_engine_t::out_event ()
             encoder->load_msg (&tx_msg);
             unsigned char *bufptr = outpos + outsize;
             size_t n = encoder->encode (&bufptr, out_batch_size - outsize);
-            zmq_assert (n > 0);
+            if (!(n > 0)) return; // saki zmq_assert (n > 0);
             if (outpos == NULL)
                 outpos = bufptr;
             outsize += n;
@@ -445,9 +445,9 @@ void zmq::stream_engine_t::restart_output ()
 
 void zmq::stream_engine_t::restart_input ()
 {
-    zmq_assert (input_stopped);
-    zmq_assert (session != NULL);
-    zmq_assert (decoder != NULL);
+    if (!(input_stopped)) return; // saki zmq_assert (input_stopped);
+    if (!(session != NULL)) return; // saki zmq_assert (session != NULL);
+    if (!(decoder != NULL)) return; // saki zmq_assert (decoder != NULL);
 
     int rc = (this->*process_msg) (decoder->msg ());
     if (rc == -1) {
@@ -461,7 +461,7 @@ void zmq::stream_engine_t::restart_input ()
     while (insize > 0) {
         size_t processed = 0;
         rc = decoder->decode (inpos, insize, processed);
-        zmq_assert (processed <= insize);
+        if (!(processed <= insize)) return; // saki zmq_assert (processed <= insize);
         inpos += processed;
         insize -= processed;
         if (rc == 0 || rc == -1)
@@ -489,8 +489,8 @@ void zmq::stream_engine_t::restart_input ()
 
 bool zmq::stream_engine_t::handshake ()
 {
-    zmq_assert (handshaking);
-    zmq_assert (greeting_bytes_read < greeting_size);
+    if (!(handshaking)) return false; // saki zmq_assert (handshaking);
+    if (!(greeting_bytes_read < greeting_size)) return false; // saki zmq_assert (greeting_bytes_read < greeting_size);
     //  Receive the greeting.
     while (greeting_bytes_read < greeting_size) {
         const int n = tcp_read (s, greeting_recv + greeting_bytes_read,
@@ -545,10 +545,14 @@ bool zmq::stream_engine_t::handshake ()
                     outpos[outsize++] = 0; //  Minor version number
                     memset (outpos + outsize, 0, 20);
 
-                    zmq_assert (options.mechanism == ZMQ_NULL
+					if (!(options.mechanism == ZMQ_NULL
                                 || options.mechanism == ZMQ_PLAIN
                                 || options.mechanism == ZMQ_CURVE
-                                || options.mechanism == ZMQ_GSSAPI);
+                                || options.mechanism == ZMQ_GSSAPI)) return false;
+// saki                    zmq_assert (options.mechanism == ZMQ_NULL
+//                                || options.mechanism == ZMQ_PLAIN
+//                                || options.mechanism == ZMQ_CURVE
+//                                || options.mechanism == ZMQ_GSSAPI);
 
                     if (options.mechanism == ZMQ_NULL)
                         memcpy (outpos + outsize, "NULL", 4);
@@ -596,11 +600,11 @@ bool zmq::stream_engine_t::handshake ()
         //  Prepare the routing id message and load it into encoder.
         //  Then consume bytes we have already sent to the peer.
         const int rc = tx_msg.init_size (options.routing_id_size);
-        zmq_assert (rc == 0);
+        if (!(rc == 0)) return false; // saki zmq_assert (rc == 0);
         memcpy (tx_msg.data (), options.routing_id, options.routing_id_size);
         encoder->load_msg (&tx_msg);
         size_t buffer_size = encoder->encode (&bufferp, header_size);
-        zmq_assert (buffer_size == header_size);
+        if (!(buffer_size == header_size)) return false; // saki zmq_assert (buffer_size == header_size);
 
         //  Make sure the decoder sees the data we have already received.
         inpos = greeting_recv;
@@ -729,7 +733,7 @@ bool zmq::stream_engine_t::handshake ()
 int zmq::stream_engine_t::routing_id_msg (msg_t *msg_)
 {
     int rc = msg_->init_size (options.routing_id_size);
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
     if (options.routing_id_size > 0)
         memcpy (msg_->data (), options.routing_id, options.routing_id_size);
     next_msg = &stream_engine_t::pull_msg_from_session;
@@ -741,12 +745,12 @@ int zmq::stream_engine_t::process_routing_id_msg (msg_t *msg_)
     if (options.recv_routing_id) {
         msg_->set_flags (msg_t::routing_id);
         int rc = session->push_msg (msg_);
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
     } else {
         int rc = msg_->close ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
         rc = msg_->init ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
     }
 
     if (subscription_required) {
@@ -755,10 +759,10 @@ int zmq::stream_engine_t::process_routing_id_msg (msg_t *msg_)
         //  Inject the subscription message, so that also
         //  ZMQ 2.x peers receive published messages.
         int rc = subscription.init_size (1);
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
         *(unsigned char *) subscription.data () = 1;
         rc = session->push_msg (&subscription);
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
     }
 
     process_msg = &stream_engine_t::push_msg_to_session;
@@ -768,7 +772,7 @@ int zmq::stream_engine_t::process_routing_id_msg (msg_t *msg_)
 
 int zmq::stream_engine_t::next_handshake_command (msg_t *msg_)
 {
-    zmq_assert (mechanism != NULL);
+    if (!(mechanism != NULL)) return -1; // saki zmq_assert (mechanism != NULL);
 
     if (mechanism->status () == mechanism_t::ready) {
         mechanism_ready ();
@@ -788,7 +792,7 @@ int zmq::stream_engine_t::next_handshake_command (msg_t *msg_)
 
 int zmq::stream_engine_t::process_handshake_command (msg_t *msg_)
 {
-    zmq_assert (mechanism != NULL);
+    if (!(mechanism != NULL)) return -1; // saki zmq_assert (mechanism != NULL);
     const int rc = mechanism->process_handshake_command (msg_);
     if (rc == 0) {
         if (mechanism->status () == mechanism_t::ready)
@@ -806,7 +810,7 @@ int zmq::stream_engine_t::process_handshake_command (msg_t *msg_)
 
 void zmq::stream_engine_t::zap_msg_available ()
 {
-    zmq_assert (mechanism != NULL);
+    if (!(mechanism != NULL)) return; // saki zmq_assert (mechanism != NULL);
 
     const int rc = mechanism->zap_msg_available ();
     if (rc == -1) {
@@ -841,7 +845,7 @@ void zmq::stream_engine_t::mechanism_ready ()
             // so we can just bail out of the routing id set.
             return;
         }
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return; // saki errno_assert (rc == 0);
         session->flush ();
     }
 
@@ -860,7 +864,7 @@ void zmq::stream_engine_t::mechanism_ready ()
     const properties_t &zmtp_properties = mechanism->get_zmtp_properties ();
     properties.insert (zmtp_properties.begin (), zmtp_properties.end ());
 
-    zmq_assert (metadata == NULL);
+    if (!(metadata == NULL)) return; // saki zmq_assert (metadata == NULL);
     if (!properties.empty ()) {
         metadata = new (std::nothrow) metadata_t (properties);
         alloc_assert (metadata);
@@ -890,20 +894,20 @@ int zmq::stream_engine_t::push_raw_msg_to_session (msg_t *msg_)
 
 int zmq::stream_engine_t::write_credential (msg_t *msg_)
 {
-    zmq_assert (mechanism != NULL);
-    zmq_assert (session != NULL);
+    if (!(mechanism != NULL)) return -1; // saki zmq_assert (mechanism != NULL);
+    if (!(session != NULL)) return -1; // saki zmq_assert (session != NULL);
 
     const blob_t &credential = mechanism->get_user_id ();
     if (credential.size () > 0) {
         msg_t msg;
         int rc = msg.init_size (credential.size ());
-        zmq_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki zmq_assert (rc == 0);
         memcpy (msg.data (), credential.data (), credential.size ());
         msg.set_flags (msg_t::credential);
         rc = session->push_msg (&msg);
         if (rc == -1) {
             rc = msg.close ();
-            errno_assert (rc == 0);
+            // saki errno_assert (rc == 0);
             return -1;
         }
     }
@@ -913,7 +917,7 @@ int zmq::stream_engine_t::write_credential (msg_t *msg_)
 
 int zmq::stream_engine_t::pull_and_encode (msg_t *msg_)
 {
-    zmq_assert (mechanism != NULL);
+    if (!(mechanism != NULL)) return -1; // saki zmq_assert (mechanism != NULL);
 
     if (session->pull_msg (msg_) == -1)
         return -1;
@@ -924,7 +928,7 @@ int zmq::stream_engine_t::pull_and_encode (msg_t *msg_)
 
 int zmq::stream_engine_t::decode_and_push (msg_t *msg_)
 {
-    zmq_assert (mechanism != NULL);
+    if (!(mechanism != NULL)) return -1; // saki zmq_assert (mechanism != NULL);
 
     if (mechanism->decode (msg_) == -1)
         return -1;
@@ -973,7 +977,7 @@ void zmq::stream_engine_t::error (error_reason_t reason)
         (this->*process_msg) (&terminator);
         terminator.close ();
     }
-    zmq_assert (session);
+    if (!(session)) return; // saki zmq_assert (session);
 #ifdef ZMQ_BUILD_DRAFT_API
     // protocol errors have been signaled already at the point where they occurred
     if (reason != protocol_error
@@ -992,7 +996,7 @@ void zmq::stream_engine_t::error (error_reason_t reason)
 
 void zmq::stream_engine_t::set_handshake_timer ()
 {
-    zmq_assert (!has_handshake_timer);
+    if (!(!has_handshake_timer)) return; // saki zmq_assert (!has_handshake_timer);
 
     if (!options.raw_socket && options.handshake_ivl > 0) {
         add_timer (options.handshake_ivl, handshake_timer_id);
@@ -1039,11 +1043,11 @@ void zmq::stream_engine_t::timer_event (int id_)
 int zmq::stream_engine_t::produce_ping_message (msg_t *msg_)
 {
     int rc = 0;
-    zmq_assert (mechanism != NULL);
+    if (!(mechanism != NULL)) return -1; // saki zmq_assert (mechanism != NULL);
 
     // 16-bit TTL + \4PING == 7
     rc = msg_->init_size (7);
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
     msg_->set_flags (msg_t::command);
     // Copy in the command message
     memcpy (msg_->data (), "\4PING", 5);
@@ -1063,10 +1067,10 @@ int zmq::stream_engine_t::produce_ping_message (msg_t *msg_)
 int zmq::stream_engine_t::produce_pong_message (msg_t *msg_)
 {
     int rc = 0;
-    zmq_assert (mechanism != NULL);
+    if (!(mechanism != NULL)) return -1; // saki zmq_assert (mechanism != NULL);
 
     rc = msg_->init_size (5);
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
     msg_->set_flags (msg_t::command);
 
     memcpy (msg_->data (), "\4PONG", 5);
