@@ -115,22 +115,22 @@ int zmq::curve_server_t::process_handshake_command (msg_t *msg_)
     }
     if (rc == 0) {
         rc = msg_->close ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
         rc = msg_->init ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
     }
     return rc;
 }
 
 int zmq::curve_server_t::encode (msg_t *msg_)
 {
-    zmq_assert (state == ready);
+    if (!(state == ready)) return -1; // saki zmq_assert (state == ready);
     return curve_mechanism_base_t::encode (msg_);
 }
 
 int zmq::curve_server_t::decode (msg_t *msg_)
 {
-    zmq_assert (state == ready);
+    if (!(state == ready)) return -1; // saki zmq_assert (state == ready);
     return curve_mechanism_base_t::decode (msg_);
 }
 
@@ -222,7 +222,7 @@ int zmq::curve_server_t::produce_welcome (msg_t *msg_)
     int rc =
       crypto_secretbox (cookie_ciphertext, cookie_plaintext,
                         sizeof cookie_plaintext, cookie_nonce, cookie_key);
-    zmq_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki zmq_assert (rc == 0);
 
     uint8_t welcome_nonce[crypto_box_NONCEBYTES];
     uint8_t welcome_plaintext[crypto_box_ZEROBYTES + 128];
@@ -255,7 +255,7 @@ int zmq::curve_server_t::produce_welcome (msg_t *msg_)
         return -1;
 
     rc = msg_->init_size (168);
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
     uint8_t *const welcome = static_cast<uint8_t *> (msg_->data ());
     memcpy (welcome, "\x07WELCOME", 8);
@@ -388,7 +388,7 @@ int zmq::curve_server_t::process_initiate (msg_t *msg_)
 
     //  Precompute connection secret from client key
     rc = crypto_box_beforenm (cn_precom, cn_client, cn_secret);
-    zmq_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki zmq_assert (rc == 0);
 
     //  Given this is a backward-incompatible change, it's behind a socket
     //  option disabled by default.
@@ -449,12 +449,12 @@ int zmq::curve_server_t::produce_ready (msg_t *msg_)
 
     int rc = crypto_box_afternm (ready_box, ready_plaintext, mlen, ready_nonce,
                                  cn_precom);
-    zmq_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki zmq_assert (rc == 0);
 
     free (ready_plaintext);
 
     rc = msg_->init_size (14 + mlen - crypto_box_BOXZEROBYTES);
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
     uint8_t *ready = static_cast<uint8_t *> (msg_->data ());
 
@@ -474,9 +474,9 @@ int zmq::curve_server_t::produce_ready (msg_t *msg_)
 int zmq::curve_server_t::produce_error (msg_t *msg_) const
 {
     const size_t expected_status_code_length = 3;
-    zmq_assert (status_code.length () == 3);
+    if (!(status_code.length () == 3)) return -1; // saki zmq_assert (status_code.length () == 3);
     const int rc = msg_->init_size (6 + 1 + expected_status_code_length);
-    zmq_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki zmq_assert (rc == 0);
     char *msg_data = static_cast<char *> (msg_->data ());
     memcpy (msg_data, "\5ERROR", 6);
     msg_data[6] = expected_status_code_length;
