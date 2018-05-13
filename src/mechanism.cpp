@@ -53,7 +53,7 @@ void zmq::mechanism_t::set_peer_routing_id (const void *id_ptr, size_t id_size)
 void zmq::mechanism_t::peer_routing_id (msg_t *msg_)
 {
     const int rc = msg_->init_size (routing_id.size ());
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return; // saki errno_assert (rc == 0);
     memcpy (msg_->data (), routing_id.data (), routing_id.size ());
     msg_->set_flags (msg_t::routing_id);
 }
@@ -107,7 +107,7 @@ const char *zmq::mechanism_t::socket_type_string (int socket_type) const
 #endif
     };
     static const size_t names_count = sizeof (names) / sizeof (names[0]);
-    zmq_assert (socket_type >= 0 && socket_type < (int) names_count);
+    if (!(socket_type >= 0 && socket_type < (int) names_count)) return NULL; // saki zmq_assert (socket_type >= 0 && socket_type < (int) names_count);
     return names[socket_type];
 }
 
@@ -119,7 +119,7 @@ static size_t property_len (size_t name_len, size_t value_len)
 static size_t name_len (const char *name)
 {
     const size_t name_len = strlen (name);
-    zmq_assert (name_len <= 255);
+    if (!(name_len <= 255)) return 0; // saki zmq_assert (name_len <= 255);
     return name_len;
 }
 
@@ -131,12 +131,12 @@ size_t zmq::mechanism_t::add_property (unsigned char *ptr,
 {
     const size_t name_len = ::name_len (name);
     const size_t total_len = ::property_len (name_len, value_len);
-    zmq_assert (total_len <= ptr_capacity);
+    if (!(total_len <= ptr_capacity)) return -1; // saki zmq_assert (total_len <= ptr_capacity);
 
     *ptr++ = static_cast<unsigned char> (name_len);
     memcpy (ptr, name, name_len);
     ptr += name_len;
-    zmq_assert (value_len <= 0x7FFFFFFF);
+    if (!(value_len <= 0x7FFFFFFF)) return -1; // saki zmq_assert (value_len <= 0x7FFFFFFF);
     put_uint32 (ptr, static_cast<uint32_t> (value_len));
     ptr += 4;
     memcpy (ptr, value, value_len);
@@ -205,7 +205,7 @@ void zmq::mechanism_t::make_command_with_basic_properties (
 {
     const size_t command_size = prefix_len_ + basic_properties_len ();
     const int rc = msg_->init_size (command_size);
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return; // saki errno_assert (rc == 0);
 
     unsigned char *ptr = (unsigned char *) msg_->data ();
 
