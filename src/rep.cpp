@@ -88,7 +88,7 @@ int zmq::rep_t::xrecv (msg_t *msg_)
 
                 //  Push it to the reply pipe.
                 rc = router_t::xsend (msg_);
-                errno_assert (rc == 0);
+                if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
                 if (bottom)
                     break;
@@ -96,7 +96,7 @@ int zmq::rep_t::xrecv (msg_t *msg_)
                 //  If the traceback stack is malformed, discard anything
                 //  already sent to pipe (we're at end of invalid message).
                 rc = router_t::rollback ();
-                errno_assert (rc == 0);
+                if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
             }
         }
         request_begins = false;
