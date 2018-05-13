@@ -120,8 +120,8 @@ int zmq::msg_t::init_external_storage (content_t *content_,
                                        msg_free_fn *ffn_,
                                        void *hint_)
 {
-    zmq_assert (NULL != data_);
-    zmq_assert (NULL != content_);
+    if (!(NULL != data_)) return -1; // saki zmq_assert (NULL != data_);
+    if (!(NULL != content_)) return -1; // saki zmq_assert (NULL != content_);
 
     u.zclmsg.metadata = NULL;
     u.zclmsg.type = type_zclmsg;
@@ -146,7 +146,7 @@ int zmq::msg_t::init_data (void *data_,
 {
     //  If data is NULL and size is not 0, a segfault
     //  would occur once the data is accessed
-    zmq_assert (data_ != NULL || size_ == 0);
+    if (!(data_ != NULL || size_ == 0)) return -1; // saki zmq_assert (data_ != NULL || size_ == 0);
 
     //  Initialize constant message if there's no need to deallocate
     if (ffn_ == NULL) {
@@ -233,7 +233,7 @@ int zmq::msg_t::close ()
     }
 
     if (is_zcmsg ()) {
-        zmq_assert (u.zclmsg.content->ffn);
+        if (!(u.zclmsg.content->ffn)) return -1; // saki zmq_assert (u.zclmsg.content->ffn);
 
         //  If the content is not shared, or if it is shared and the reference
         //  count has dropped to zero, deallocate it.
@@ -326,7 +326,7 @@ int zmq::msg_t::copy (msg_t &src_)
 void *zmq::msg_t::data ()
 {
     //  Check the validity of the message.
-    zmq_assert (check ());
+    if (!(check ())) return NULL; // saki zmq_assert (check ());
 
     switch (u.base.type) {
         case type_vsm:
@@ -338,7 +338,7 @@ void *zmq::msg_t::data ()
         case type_zclmsg:
             return u.zclmsg.content->data;
         default:
-            zmq_assert (false);
+            // saki zmq_assert (false);
             return NULL;
     }
 }
@@ -346,7 +346,7 @@ void *zmq::msg_t::data ()
 size_t zmq::msg_t::size () const
 {
     //  Check the validity of the message.
-    zmq_assert (check ());
+    if (!(check ())) return 0; // saki zmq_assert (check ());
 
     switch (u.base.type) {
         case type_vsm:
@@ -358,7 +358,7 @@ size_t zmq::msg_t::size () const
         case type_cmsg:
             return u.cmsg.size;
         default:
-            zmq_assert (false);
+            // saki zmq_assert (false);
             return 0;
     }
 }
@@ -443,10 +443,10 @@ bool zmq::msg_t::is_leave () const
 
 void zmq::msg_t::add_refs (int refs_)
 {
-    zmq_assert (refs_ >= 0);
+    if (!(refs_ >= 0)) return; // saki zmq_assert (refs_ >= 0);
 
     //  Operation not supported for messages with metadata.
-    zmq_assert (u.base.metadata == NULL);
+    if (!(u.base.metadata == NULL)) return; // saki zmq_assert (u.base.metadata == NULL);
 
     //  No copies required.
     if (!refs_)
@@ -466,10 +466,10 @@ void zmq::msg_t::add_refs (int refs_)
 
 bool zmq::msg_t::rm_refs (int refs_)
 {
-    zmq_assert (refs_ >= 0);
+    if (!(refs_ >= 0)) return false; // saki zmq_assert (refs_ >= 0);
 
     //  Operation not supported for messages with metadata.
-    zmq_assert (u.base.metadata == NULL);
+    if (!(u.base.metadata == NULL)) return false; // saki zmq_assert (u.base.metadata == NULL);
 
     //  No copies required.
     if (!refs_)
@@ -560,7 +560,7 @@ zmq::atomic_counter_t *zmq::msg_t::refcnt ()
         case type_zclmsg:
             return &u.zclmsg.content->refcnt;
         default:
-            zmq_assert (false);
+            // saki zmq_assert (false);
             return NULL;
     }
 }
