@@ -92,9 +92,9 @@ int zmq::plain_client_t::process_handshake_command (msg_t *msg_)
 
     if (rc == 0) {
         rc = msg_->close ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
         rc = msg_->init ();
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
     }
 
     return rc;
@@ -113,16 +113,16 @@ zmq::mechanism_t::status_t zmq::plain_client_t::status () const
 int zmq::plain_client_t::produce_hello (msg_t *msg_) const
 {
     const std::string username = options.plain_username;
-    zmq_assert (username.length () < 256);
+    if (!(username.length () < 256)) return -1; // saki zmq_assert (username.length () < 256);
 
     const std::string password = options.plain_password;
-    zmq_assert (password.length () < 256);
+    if (!(password.length () < 256)) return -1; // saki zmq_assert (password.length () < 256);
 
     const size_t command_size =
       6 + 1 + username.length () + 1 + password.length ();
 
     const int rc = msg_->init_size (command_size);
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
     unsigned char *ptr = static_cast<unsigned char *> (msg_->data ());
     memcpy (ptr, "\x05HELLO", 6);
