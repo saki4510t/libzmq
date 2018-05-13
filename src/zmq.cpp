@@ -360,8 +360,8 @@ int zmq_send (void *s_, const void *buf_, size_t len_, int flags_)
     int rc = s_sendmsg (s, &msg, flags_);
     if (unlikely (rc < 0)) {
         int err = errno;
-        int rc2 = zmq_msg_close (&msg);
-        errno_assert (rc2 == 0);
+        /*int rc2 =*/ zmq_msg_close (&msg);
+        // saki errno_assert (rc2 == 0);
         errno = err;
         return -1;
     }
@@ -383,8 +383,8 @@ int zmq_send_const (void *s_, const void *buf_, size_t len_, int flags_)
     rc = s_sendmsg (s, &msg, flags_);
     if (unlikely (rc < 0)) {
         int err = errno;
-        int rc2 = zmq_msg_close (&msg);
-        errno_assert (rc2 == 0);
+        /*int rc2 = */zmq_msg_close (&msg);
+        // saki errno_assert (rc2 == 0);
         errno = err;
         return -1;
     }
@@ -426,8 +426,8 @@ int zmq_sendiov (void *s_, iovec *a_, size_t count_, int flags_)
         rc = s_sendmsg (s, &msg, flags_);
         if (unlikely (rc < 0)) {
             int err = errno;
-            int rc2 = zmq_msg_close (&msg);
-            errno_assert (rc2 == 0);
+            /*int rc2 = */zmq_msg_close (&msg);
+            // saki errno_assert (rc2 == 0);
             errno = err;
             rc = -1;
             break;
@@ -463,13 +463,13 @@ int zmq_recv (void *s_, void *buf_, size_t len_, int flags_)
         return -1;
     zmq_msg_t msg;
     int rc = zmq_msg_init (&msg);
-    errno_assert (rc == 0);
+    if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
     int nbytes = s_recvmsg (s, &msg, flags_);
     if (unlikely (nbytes < 0)) {
         int err = errno;
         rc = zmq_msg_close (&msg);
-        errno_assert (rc == 0);
+        // saki errno_assert (rc == 0);
         errno = err;
         return -1;
     }
@@ -483,7 +483,7 @@ int zmq_recv (void *s_, void *buf_, size_t len_, int flags_)
         memcpy (buf_, zmq_msg_data (&msg), to_copy);
     }
     rc = zmq_msg_close (&msg);
-    errno_assert (rc == 0);
+    // errno_assert (rc == 0);
 
     return nbytes;
 }
@@ -523,13 +523,13 @@ int zmq_recviov (void *s_, iovec *a_, size_t *count_, int flags_)
     for (size_t i = 0; recvmore && i < count; ++i) {
         zmq_msg_t msg;
         int rc = zmq_msg_init (&msg);
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // errno_assert (rc == 0);
 
         int nbytes = s_recvmsg (s, &msg, flags_);
         if (unlikely (nbytes < 0)) {
             int err = errno;
             rc = zmq_msg_close (&msg);
-            errno_assert (rc == 0);
+            // saki errno_assert (rc == 0);
             errno = err;
             nread = -1;
             break;
@@ -547,7 +547,7 @@ int zmq_recviov (void *s_, iovec *a_, size_t *count_, int flags_)
         zmq::msg_t *p_msg = reinterpret_cast<zmq::msg_t *> (&msg);
         recvmore = p_msg->flags () & zmq::msg_t::more;
         rc = zmq_msg_close (&msg);
-        errno_assert (rc == 0);
+        // saki errno_assert (rc == 0);
         ++*count_;
         ++nread;
     }
@@ -877,7 +877,7 @@ int zmq_poll (zmq_pollitem_t *items_, int nitems_, long timeout_)
                     free (pollfds);
                 return -1;
             }
-            errno_assert (rc >= 0);
+            if (!(rc >= 0)) return -1; // saki errno_assert (rc >= 0);
         }
         //  Check for the events.
         for (int i = 0; i != nitems_; i++) {
@@ -1075,7 +1075,7 @@ int zmq_poll (zmq_pollitem_t *items_, int nitems_, long timeout_)
             memcpy (&errset, &pollset_err, sizeof (fd_set));
             int rc = select (maxfd + 1, &inset, &outset, &errset, ptimeout);
             if (unlikely (rc == -1)) {
-                errno_assert (errno == EINTR || errno == EBADF);
+                // saki errno_assert (errno == EINTR || errno == EBADF);
                 return -1;
             }
 #endif
