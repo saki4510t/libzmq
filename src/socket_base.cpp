@@ -214,10 +214,10 @@ zmq::socket_base_t::socket_base_t (ctx_t *parent_,
 
     if (thread_safe) {
         mailbox = new (std::nothrow) mailbox_safe_t (&sync);
-        zmq_assert (mailbox);
+        zmq_assert (mailbox);	// saki alloc_assert?
     } else {
         mailbox_t *m = new (std::nothrow) mailbox_t ();
-        zmq_assert (m);
+        zmq_assert (m);	// saki alloc_assert?
 
         if (m->get_fd () != retired_fd)
             mailbox = m;
@@ -250,7 +250,7 @@ zmq::socket_base_t::~socket_base_t ()
     scoped_lock_t lock (monitor_sync);
     stop_monitor ();
 
-    zmq_assert (destroyed);
+// saki    zmq_assert (destroyed);
 }
 
 zmq::i_mailbox *zmq::socket_base_t::get_mailbox ()
@@ -271,7 +271,7 @@ int zmq::socket_base_t::parse_uri (const char *uri_,
                                    std::string &protocol_,
                                    std::string &address_)
 {
-    zmq_assert (uri_ != NULL);
+    if (!(uri_ != NULL)) return -1; // saki zmq_assert (uri_ != NULL);
 
     std::string uri (uri_);
     std::string::size_type pos = uri.find ("://");
@@ -419,7 +419,7 @@ int zmq::socket_base_t::getsockopt (int option_,
         if (rc != 0 && (errno == EINTR || errno == ETERM)) {
             return -1;
         }
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
         return do_getsockopt<int> (optval_, optvallen_,
                                    (has_out () ? ZMQ_POLLOUT : 0)
@@ -459,7 +459,7 @@ int zmq::socket_base_t::leave (const char *group_)
 
 void zmq::socket_base_t::add_signaler (signaler_t *s_)
 {
-    zmq_assert (thread_safe);
+    if (!(thread_safe)) return; // saki zmq_assert (thread_safe);
 
     scoped_lock_t sync_lock (sync);
     ((mailbox_safe_t *) mailbox)->add_signaler (s_);
@@ -467,7 +467,7 @@ void zmq::socket_base_t::add_signaler (signaler_t *s_)
 
 void zmq::socket_base_t::remove_signaler (signaler_t *s_)
 {
-    zmq_assert (thread_safe);
+    if (!(thread_safe)) return; // saki zmq_assert (thread_safe);
 
     scoped_lock_t sync_lock (sync);
     ((mailbox_safe_t *) mailbox)->remove_signaler (s_);
@@ -542,7 +542,7 @@ int zmq::socket_base_t::bind (const char *addr_)
 
         session_base_t *session =
           session_base_t::create (io_thread, true, this, options, paddr);
-        errno_assert (session);
+        if (!(session)) return -1; // saki errno_assert (session);
 
         pipe_t *newpipe = NULL;
 
@@ -553,7 +553,7 @@ int zmq::socket_base_t::bind (const char *addr_)
         int hwms[2] = {options.sndhwm, options.rcvhwm};
         bool conflates[2] = {false, false};
         rc = pipepair (parents, new_pipes, hwms, conflates);
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
         //  Attach local end of the pipe to the socket object.
         attach_pipe (new_pipes[0], true);
@@ -658,7 +658,7 @@ int zmq::socket_base_t::bind (const char *addr_)
     }
 #endif
 
-    zmq_assert (false);
+// saki    zmq_assert (false);
     return -1;
 }
 
@@ -724,7 +724,7 @@ int zmq::socket_base_t::connect (const char *addr_)
             new_pipes[1]->set_hwms_boost (options.sndhwm, options.rcvhwm);
         }
 
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
         if (!peer.socket) {
             //  The peer doesn't exist yet so we don't know whether
@@ -733,11 +733,11 @@ int zmq::socket_base_t::connect (const char *addr_)
             //  the peer doesn't expect it.
             msg_t id;
             rc = id.init_size (options.routing_id_size);
-            errno_assert (rc == 0);
+            if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
             memcpy (id.data (), options.routing_id, options.routing_id_size);
             id.set_flags (msg_t::routing_id);
             bool written = new_pipes[0]->write (&id);
-            zmq_assert (written);
+            if (!(written)) return -1; // saki zmq_assert (written);
             new_pipes[0]->flush ();
 
             const endpoint_t endpoint = {this, options};
@@ -747,12 +747,12 @@ int zmq::socket_base_t::connect (const char *addr_)
             if (peer.options.recv_routing_id) {
                 msg_t id;
                 rc = id.init_size (options.routing_id_size);
-                errno_assert (rc == 0);
+                if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
                 memcpy (id.data (), options.routing_id,
                         options.routing_id_size);
                 id.set_flags (msg_t::routing_id);
                 bool written = new_pipes[0]->write (&id);
-                zmq_assert (written);
+                if (!(written)) return -1; // saki zmq_assert (written);
                 new_pipes[0]->flush ();
             }
 
@@ -760,12 +760,12 @@ int zmq::socket_base_t::connect (const char *addr_)
             if (options.recv_routing_id) {
                 msg_t id;
                 rc = id.init_size (peer.options.routing_id_size);
-                errno_assert (rc == 0);
+                if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
                 memcpy (id.data (), peer.options.routing_id,
                         peer.options.routing_id_size);
                 id.set_flags (msg_t::routing_id);
                 bool written = new_pipes[1]->write (&id);
-                zmq_assert (written);
+                if (!(written)) return -1; //  saki zmq_assert (written);
                 new_pipes[1]->flush ();
             }
 
@@ -809,7 +809,7 @@ int zmq::socket_base_t::connect (const char *addr_)
 
     address_t *paddr =
       new (std::nothrow) address_t (protocol, address, this->get_ctx ());
-    alloc_assert (paddr);
+    if (!(paddr)) return -1; // saki alloc_assert (paddr);
 
     //  Resolve address (if needed by the protocol)
     if (protocol == "tcp") {
@@ -934,7 +934,7 @@ int zmq::socket_base_t::connect (const char *addr_)
     //  Create session.
     session_base_t *session =
       session_base_t::create (io_thread, true, this, options, paddr);
-    errno_assert (session);
+    if (!(session)) return -1; // saki errno_assert (session);
 
     //  PGM does not support subscription forwarding; ask for all data to be
     //  sent to this pipe. (same for NORM, currently?)
@@ -957,7 +957,7 @@ int zmq::socket_base_t::connect (const char *addr_)
                        conflate ? -1 : options.rcvhwm};
         bool conflates[2] = {conflate, conflate};
         rc = pipepair (parents, new_pipes, hwms, conflates);
-        errno_assert (rc == 0);
+        if (!(rc == 0)) return -1; // saki errno_assert (rc == 0);
 
         //  Attach local end of the pipe to the socket object.
         attach_pipe (new_pipes[0], subscribe_to_all);
@@ -1294,7 +1294,7 @@ void zmq::socket_base_t::start_reaping (poller_t *poller_)
         scoped_optional_lock_t sync_lock (thread_safe ? &sync : NULL);
 
         reaper_signaler = new (std::nothrow) signaler_t ();
-        zmq_assert (reaper_signaler);
+        zmq_assert (reaper_signaler);	// saki alloc_assert?
 
         //  Add signaler to the safe mailbox
         fd = reaper_signaler->get_fd ();
@@ -1355,7 +1355,7 @@ int zmq::socket_base_t::process_commands (int timeout_, bool throttle_)
     if (errno == EINTR)
         return -1;
 
-    zmq_assert (errno == EAGAIN);
+    if (!(errno == EAGAIN)) return -1; // saki zmq_assert (errno == EAGAIN);
 
     if (ctx_terminated) {
         errno = ETERM;
@@ -1470,16 +1470,16 @@ const zmq::blob_t &zmq::socket_base_t::get_credential () const
 
 void zmq::socket_base_t::xread_activated (pipe_t *)
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 void zmq::socket_base_t::xwrite_activated (pipe_t *)
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::socket_base_t::xhiccuped (pipe_t *)
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::socket_base_t::in_event ()
@@ -1502,12 +1502,12 @@ void zmq::socket_base_t::in_event ()
 
 void zmq::socket_base_t::out_event ()
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::socket_base_t::timer_event (int)
 {
-    zmq_assert (false);
+// saki    zmq_assert (false);
 }
 
 void zmq::socket_base_t::check_destroy ()
@@ -1570,7 +1570,7 @@ void zmq::socket_base_t::extract_flags (msg_t *msg_)
 {
     //  Test whether routing_id flag is valid for this socket type.
     if (unlikely (msg_->flags () & msg_t::routing_id))
-        zmq_assert (options.recv_routing_id);
+        if (!(options.recv_routing_id)) return; // zmq_assert (options.recv_routing_id);
 
     //  Remove MORE flag.
     rcvmore = msg_->flags () & msg_t::more ? true : false;
