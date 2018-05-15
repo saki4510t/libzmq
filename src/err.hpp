@@ -181,19 +181,19 @@ int wsa_error_to_errno (int errcode);
 
 #if defined(__ANDROID__)
 	#define LOGI(FMT, ...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "[%d*%s:%d:%s]:" FMT,	\
-							gettid(), basename(__FILE__), __LINE__, __FUNCTION__, __VA_ARGS__)
+							gettid(), basename(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__)
 	#define LOGW(FMT, ...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, "[%d*%s:%d:%s]:" FMT,	\
-							gettid(), basename(__FILE__), __LINE__, __FUNCTION__, __VA_ARGS__)
+							gettid(), basename(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__)
 	#define LOGE(FMT, ...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "[%d*%s:%d:%s]:" FMT,	\
-							gettid(), basename(__FILE__), __LINE__, __FUNCTION__, __VA_ARGS__)
+							gettid(), basename(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__)
 	#define LOGF(FMT, ...) __android_log_print(ANDROID_LOG_FATAL, LOG_TAG, "[%d*%s:%d:%s]:" FMT,	\
-							gettid(), basename(__FILE__), __LINE__, __FUNCTION__, __VA_ARGS__)
+							gettid(), basename(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__)
 
 #if !defined(LOG_NDEBUG)
 	#define LOGV(FMT, ...) __android_log_print(ANDROID_LOG_VERBOSE, LOG_TAG, "[%d*%s:%d:%s]:" FMT,	\
-							gettid(), basename(__FILE__), __LINE__, __FUNCTION__, __VA_ARGS__)
+							gettid(), basename(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__)
 	#define LOGD(FMT, ...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, "[%d*%s:%d:%s]:" FMT,	\
-							gettid(), basename(__FILE__), __LINE__, __FUNCTION__, __VA_ARGS__)
+							gettid(), basename(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__)
 #else
 	#define LOGV(...)
 	#define LOGD(...)

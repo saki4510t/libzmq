@@ -431,15 +431,85 @@ void zmq::print_backtrace (void)
             file_name = "?";
 
         demangled_name = abi::__cxa_demangle (func_name, NULL, NULL, &rc);
-
+#if defined(__ANDROID__)
+        LOGI ("#%u  %p in %s (%s+0x%lx)", frame_n++, addr, file_name,
+                rc ? func_name : demangled_name, (unsigned long) offset);
+#else
         printf ("#%u  %p in %s (%s+0x%lx)\n", frame_n++, addr, file_name,
                 rc ? func_name : demangled_name, (unsigned long) offset);
+#endif
         free (demangled_name);
     }
     puts ("");
 
     fflush (stdout);
     mtx.unlock ();
+}
+
+#elif defined(__ANDROID__)
+#include <iostream>
+#include <iomanip>
+#include <sstream>
+#include <unwind.h>
+#include <dlfcn.h>
+
+namespace {
+
+struct BacktraceState
+{
+    void **current;
+    void **end;
+};
+
+static _Unwind_Reason_Code unwindCallback(struct _Unwind_Context* context, void *arg)
+{
+    BacktraceState* state = static_cast<BacktraceState*>(arg);
+    uintptr_t pc = _Unwind_GetIP(context);
+    if (pc) {
+        if (state->current == state->end) {
+            return _URC_END_OF_STACK;
+        } else {
+            *state->current++ = reinterpret_cast<void*>(pc);
+        }
+    }
+    return _URC_NO_REASON;
+}
+
+} // end of namespace
+
+size_t captureBacktrace(void **buffer, const size_t max)
+{
+    BacktraceState state = {buffer, buffer + max};
+    _Unwind_Backtrace(unwindCallback, &state);
+
+    return state.current - buffer;
+}
+
+void dumpBacktrace(std::ostream &os, void **buffer, const size_t count)
+{
+	// idx=0 is #print_backtrace
+    for (size_t idx = 0; idx < count; idx++) {
+        const void *addr = buffer[idx];
+        const char *symbol = "";
+
+        Dl_info info;
+        if (dladdr(addr, &info) && info.dli_sname) {
+            symbol = info.dli_sname;
+        }
+
+        os << "  #" << std::setw(2) << idx << ": " << addr << "  " << symbol << "\n";
+    }
+}
+
+void zmq::print_backtrace (void)
+{
+    static const size_t max = 30;
+    void *buffer[max];
+    std::ostringstream oss;
+
+    dumpBacktrace(oss, buffer, captureBacktrace(buffer, max));
+
+    LOGI("backtrace:\n%s", oss.str().c_str());
 }
 
 #else
