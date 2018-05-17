@@ -216,12 +216,24 @@ void zmq::socks_connecter_t::initiate_connect ()
     //  Connect may succeed in synchronous manner.
     if (rc == 0) {
         handle = add_fd (s);
+        if (!handle) {  // saki
+            if (s != retired_fd)
+                close ();
+            start_timer ();
+            return;
+        }
         set_pollout (handle);
         status = sending_greeting;
     }
     //  Connection establishment may be delayed. Poll for its completion.
     else if (errno == EINPROGRESS) {
         handle = add_fd (s);
+        if (!handle) {  // saki
+            if (s != retired_fd)
+                close ();
+            start_timer ();
+            return;
+        }
         set_pollout (handle);
         status = waiting_for_proxy_connection;
         socket->event_connect_delayed (endpoint, zmq_errno ());

@@ -1316,6 +1316,11 @@ void zmq::socket_base_t::start_reaping (poller_t *poller_)
 int zmq::socket_base_t::process_commands (int timeout_, bool throttle_)
 {
     int rc;
+    if (!mailbox) { // saki
+        errno = ETERM;
+    	LOGE("unexpectedly mailbox is null");
+    	return -1;
+    }
     command_t cmd;
     if (timeout_ != 0) {
         //  If we are asked to wait, simply ask mailbox to wait.
@@ -1348,6 +1353,9 @@ int zmq::socket_base_t::process_commands (int timeout_, bool throttle_)
 
     //  Process all available commands.
     while (rc == 0) {
+    	if (!cmd.destination || !mailbox) {	// saki
+    		return -1;
+    	}
         cmd.destination->process_command (cmd);
         rc = mailbox->recv (&cmd, 0);
     }

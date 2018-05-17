@@ -154,6 +154,12 @@ void zmq::ipc_connecter_t::start_connecting ()
     //  Connect may succeed in synchronous manner.
     if (rc == 0) {
         handle = add_fd (s);
+        if (!handle) {  // saki
+            if (s != retired_fd)
+                close ();
+            add_reconnect_timer ();
+            return;
+        }
         handle_valid = true;
         out_event ();
     }
@@ -161,6 +167,12 @@ void zmq::ipc_connecter_t::start_connecting ()
     //  Connection establishment may be delayed. Poll for its completion.
     else if (rc == -1 && errno == EINPROGRESS) {
         handle = add_fd (s);
+        if (!handle) {  // saki
+            if (s != retired_fd)
+                close ();
+            add_reconnect_timer ();
+            return;
+        }
         handle_valid = true;
         set_pollout (handle);
         socket->event_connect_delayed (endpoint, zmq_errno ());

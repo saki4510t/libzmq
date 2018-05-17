@@ -87,10 +87,18 @@ zmq::tcp_connecter_t::tcp_connecter_t (class io_thread_t *io_thread_,
 
 zmq::tcp_connecter_t::~tcp_connecter_t ()
 {
-    zmq_assert (!connect_timer_started);
-    zmq_assert (!reconnect_timer_started);
-    zmq_assert (!handle);
-    zmq_assert (s == retired_fd);
+    if (connect_timer_started) {// saki zmq_assert (!connect_timer_started);
+    	LOGW("unexpectedly connect_timer_started value");
+    }
+    if (reconnect_timer_started) { // saki zmq_assert (!reconnect_timer_started);
+    	LOGW("unexpectedly reconnect_timer_started value");
+    }
+    if (handle) {// saki zmq_assert (!handle);
+    	LOGW("unexpectedly handle value");
+    }
+    if (s != retired_fd) { // saki zmq_assert (s == retired_fd);
+    	LOGW("unexpectedly s value");
+    }
 }
 
 void zmq::tcp_connecter_t::process_plug ()
@@ -191,12 +199,24 @@ void zmq::tcp_connecter_t::start_connecting ()
     //  Connect may succeed in synchronous manner.
     if (rc == 0) {
         handle = add_fd (s);
+        if (!handle) {  // saki
+            if (s != retired_fd)
+                close ();
+            add_reconnect_timer ();
+            return;
+        }
         out_event ();
     }
 
     //  Connection establishment may be delayed. Poll for its completion.
     else if (rc == -1 && errno == EINPROGRESS) {
         handle = add_fd (s);
+        if (!handle) {  // saki
+            if (s != retired_fd)
+                close ();
+            add_reconnect_timer ();
+            return;
+        }
         set_pollout (handle);
         socket->event_connect_delayed (endpoint, zmq_errno ());
 

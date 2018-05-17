@@ -73,12 +73,20 @@ zmq::tcp_listener_t::tcp_listener_t (io_thread_t *io_thread_,
 
 zmq::tcp_listener_t::~tcp_listener_t ()
 {
-    zmq_assert (s == retired_fd);
-    zmq_assert (!handle);
+	if (!(s == retired_fd)) { // saki    zmq_assert (s == retired_fd);
+		LOGD("unexpected socket fd value, %d", s);
+	}
+	if (!(!handle)) { // saki    zmq_assert (!handle);
+		LOGD("unexpected handle value, %p", handle);
+	}
 }
 
 void zmq::tcp_listener_t::process_plug ()
 {
+	if (s == retired_fd) {
+		LOGD("invalid socket fd value");
+		return;
+	}
     //  Start polling for incoming connections.
     handle = add_fd (s);
     set_pollin (handle);
@@ -86,15 +94,19 @@ void zmq::tcp_listener_t::process_plug ()
 
 void zmq::tcp_listener_t::process_term (int linger_)
 {
-    rm_fd (handle);
-    handle = (handle_t) NULL;
-    close ();
-    own_t::process_term (linger_);
+	if (handle) {
+		rm_fd (handle);
+		handle = (handle_t) NULL;
+		close ();
+		own_t::process_term (linger_);
+	} else {
+		LOGD("will be already terminated");
+	}
 }
 
 void zmq::tcp_listener_t::in_event ()
 {
-    fd_t fd = accept ();
+	fd_t fd = accept ();
 
     //  If connection was reset by the peer in the meantime, just ignore it.
     //  TODO: Handle specific errors like ENFILE/EMFILE etc.
@@ -127,7 +139,7 @@ void zmq::tcp_listener_t::in_event ()
     //  Create and launch a session object.
     session_base_t *session =
       session_base_t::create (io_thread, false, socket, options, NULL);
-    errno_assert (session);
+    errno_assert (session);	// saki, will be alloc_assert ?
     session->inc_seqnum ();
     launch_child (session);
     send_attach (session, engine, false);
@@ -136,15 +148,20 @@ void zmq::tcp_listener_t::in_event ()
 
 void zmq::tcp_listener_t::close ()
 {
-    if (!(s != retired_fd)) return; // saki zmq_assert (s != retired_fd);
+    if (!(s != retired_fd)) { // saki zmq_assert (s != retired_fd);
+    	LOGD("already closed,");
+    	return;
+    }
 #ifdef ZMQ_HAVE_WINDOWS
     int rc = closesocket (s);
     wsa_assert (rc != SOCKET_ERROR);
 #else
     int rc = ::close (s);
-// saki errno_assert (rc == 0);
-    if (rc) {
+    if (rc) {	// saki errno_assert (rc == 0);
+    	LOGD("errno=%d", errno);
    		// should not assert/abort, output log etc. instead!
+//	    s = retired_fd;
+// 		return;
     }
 #endif
     socket->event_closed (endpoint, s);
@@ -153,6 +170,11 @@ void zmq::tcp_listener_t::close ()
 
 int zmq::tcp_listener_t::get_address (std::string &addr_)
 {
+    if (!(s != retired_fd)) { // saki zmq_assert (s != retired_fd);
+    	LOGD("already closed");
+        addr_.clear ();
+    	return -1;
+    }
     // Get the details of the TCP socket
     struct sockaddr_storage ss;
 #if defined ZMQ_HAVE_HPUX || defined ZMQ_HAVE_VXWORKS
@@ -209,7 +231,7 @@ int zmq::tcp_listener_t::set_address (const char *addr_)
     win_assert (brc);
 #endif
 #else
-    if (s == -1)
+    if (s == retired_fd)	// saki should compare with retired_fd
         return -1;
 #endif
 
@@ -247,7 +269,10 @@ int zmq::tcp_listener_t::set_address (const char *addr_)
     errno_assert (rc == 0);
 #else
     rc = setsockopt (s, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof (int));
-    errno_assert (rc == 0);
+    if (!(rc == 0)) {	// saki errno_assert (rc == 0);
+    	LOGD("errno=%d", errno);
+    	return -1;
+    }
 #endif
 
     //  Bind the socket to the network interface and port.
@@ -293,7 +318,10 @@ zmq::fd_t zmq::tcp_listener_t::accept ()
     //  The situation where connection cannot be accepted due to insufficient
     //  resources is considered valid and treated by ignoring the connection.
     //  Accept one connection and deal with different failure modes.
-    if (!(s != retired_fd)) return retired_fd; // saki zmq_assert (s != retired_fd);
+    if (!(s != retired_fd)) { // saki zmq_assert (s != retired_fd);
+    	LOGD("already closed");
+		return retired_fd;
+    }
 
     struct sockaddr_storage ss;
     memset (&ss, 0, sizeof (ss));
@@ -322,10 +350,17 @@ zmq::fd_t zmq::tcp_listener_t::accept ()
 #endif
 #else
     if (sock == -1) {
-        errno_assert (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR
-                   || errno == ECONNABORTED || errno == EPROTO
-                   || errno == ENOBUFS || errno == ENOMEM || errno == EMFILE
-                   || errno == ENFILE || errno == EINVAL);	// saki
+    	if (!(errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR
+			|| errno == ECONNABORTED || errno == EPROTO
+			|| errno == ENOBUFS || errno == ENOMEM || errno == EMFILE
+			|| errno == ENFILE || errno == EINVAL)) {
+
+    		LOGD("errno=%d", errno);
+    	}
+//      errno_assert (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR
+//                 || errno == ECONNABORTED || errno == EPROTO
+//                 || errno == ENOBUFS || errno == ENOMEM || errno == EMFILE
+//                 || errno == ENFILE || errno == EINVAL);	// saki
         return retired_fd;
     }
 #endif
@@ -335,7 +370,10 @@ zmq::fd_t zmq::tcp_listener_t::accept ()
     //  Race condition can cause socket not to be closed (if fork happens
     //  between accept and this point).
     int rc = fcntl (sock, F_SETFD, FD_CLOEXEC);
-    if (!(rc != -1)) return retired_fd; // saki errno_assert (rc != -1);
+    if (!(rc != -1)) { // saki errno_assert (rc != -1);
+    	LOGD("wrong fcntl result,rc=%d,errno=%d", rc, errno);
+		return retired_fd;
+    }
 #endif
 
     if (!options.tcp_accept_filters.empty ()) {
@@ -354,8 +392,8 @@ zmq::fd_t zmq::tcp_listener_t::accept ()
             wsa_assert (rc != SOCKET_ERROR);
 #else
             int rc = ::close (sock);
-// saki     errno_assert (rc == 0);
-		    if (rc) {
+		    if (rc) {	// saki     errno_assert (rc == 0);
+		    	LOGD("errno=%d", errno);
 		   		// should not assert/abort, output log etc. instead!
     		}
 #endif
@@ -369,8 +407,8 @@ zmq::fd_t zmq::tcp_listener_t::accept ()
         wsa_assert (rc != SOCKET_ERROR);
 #else
         int rc = ::close (sock);
-// saki errno_assert (rc == 0);
-	    if (rc) {
+	    if (rc) {	// saki errno_assert (rc == 0);
+	    	LOGD("errno=%d", errno);
    			// should not assert/abort, output log etc. instead!
     	}
 #endif

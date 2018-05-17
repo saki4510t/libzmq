@@ -53,7 +53,10 @@ void zmq::io_object_t::plug (io_thread_t *io_thread_)
 
 void zmq::io_object_t::unplug ()
 {
-    zmq_assert (poller);
+	if (!poller) {	// saki zmq_assert (poller);
+		LOGD("already unplugged");
+		return;
+	}
 
     //  Forget about old poller in preparation to be migrated
     //  to a different I/O thread.
@@ -62,42 +65,75 @@ void zmq::io_object_t::unplug ()
 
 zmq::io_object_t::handle_t zmq::io_object_t::add_fd (fd_t fd_)
 {
-    return poller->add_fd (fd_, this);
+	if (poller) {  // saki
+        return poller->add_fd (fd_, this);
+    } else {
+		LOGD("poller is null, will be already unplugged or not plugged");
+        return NULL;
+    }
 }
 
 void zmq::io_object_t::rm_fd (handle_t handle_)
 {
-    poller->rm_fd (handle_);
+	if (poller) {  // saki
+        poller->rm_fd (handle_);
+    } else {
+		LOGD("poller is null, will be already unplugged or not plugged");
+	}
 }
 
 void zmq::io_object_t::set_pollin (handle_t handle_)
 {
-    poller->set_pollin (handle_);
+	if (poller) {  // saki
+        poller->set_pollin (handle_);
+    } else {
+		LOGD("poller is null, will be already unplugged or not plugged");
+	}
 }
 
 void zmq::io_object_t::reset_pollin (handle_t handle_)
 {
-    poller->reset_pollin (handle_);
+	if (poller) {  // saki
+        poller->reset_pollin (handle_);
+    } else {
+		LOGD("poller is null, will be already unplugged");
+	}
 }
 
 void zmq::io_object_t::set_pollout (handle_t handle_)
 {
-    poller->set_pollout (handle_);
+	if (poller) {  // saki
+        poller->set_pollout (handle_);
+    } else {
+		LOGD("poller is null, will be already unplugged");
+	}
 }
 
 void zmq::io_object_t::reset_pollout (handle_t handle_)
 {
-    poller->reset_pollout (handle_);
+	if (poller) {  // saki
+        poller->reset_pollout (handle_);
+    } else {
+		LOGD("poller is null, will be already unplugged");
+	}
 }
 
 void zmq::io_object_t::add_timer (int timeout_, int id_)
 {
-    poller->add_timer (timeout_, this, id_);
+	if (poller) {  // saki
+        poller->add_timer (timeout_, this, id_);
+    } else {
+        LOGD("poller is null, will be already unplugged");
+	}
 }
 
 void zmq::io_object_t::cancel_timer (int id_)
 {
-    poller->cancel_timer (this, id_);
+	if (poller) { // saki
+        poller->cancel_timer (this, id_);
+    } else {
+		LOGD("poller is null, will be already unplugged");
+	}
 }
 
 void zmq::io_object_t::in_event ()

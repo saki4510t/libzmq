@@ -68,9 +68,9 @@ zmq::udp_engine_t::~udp_engine_t ()
         wsa_assert (rc != SOCKET_ERROR);
 #else
         int rc = close (fd);
-// saki        errno_assert (rc == 0);
-	    if (rc) {
+	    if (rc) {	// saki errno_assert (rc == 0);
    			// should not assert/abort, output log etc. instead!
+   			LOGD("close returned rc=%d", rc);
     	}
 #endif
         fd = retired_fd;
@@ -97,7 +97,10 @@ int zmq::udp_engine_t::init (address_t *address_, bool send_, bool recv_)
 
 void zmq::udp_engine_t::plug (io_thread_t *io_thread_, session_base_t *session_)
 {
-    zmq_assert (!plugged);
+    if (plugged) { // saki zmq_assert (!plugged);
+    	LOGD("already plugged");
+    	return;
+    }
     plugged = true;
 
     zmq_assert (!session);
@@ -107,7 +110,10 @@ void zmq::udp_engine_t::plug (io_thread_t *io_thread_, session_base_t *session_)
     //  Connect to I/O threads poller object.
     io_object_t::plug (io_thread_);
     handle = add_fd (fd);
-
+    if (!handle) {  // saki
+        plugged = false;
+        // FIXME 
+    }
     // Bind the socket to a device if applicable
     if (!options.bound_device.empty ())
         bind_to_device (fd, options.bound_device);

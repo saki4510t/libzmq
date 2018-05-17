@@ -48,7 +48,9 @@ zmq::dgram_t::dgram_t (class ctx_t *parent_, uint32_t tid_, int sid_) :
 
 zmq::dgram_t::~dgram_t ()
 {
-    zmq_assert (!pipe);
+	if (!(!pipe)) {	// saki zmq_assert (!pipe);
+		LOGD("unexpected pipe value,%p", (void *)pipe);
+	}
 }
 
 void zmq::dgram_t::xattach_pipe (pipe_t *pipe_, bool subscribe_to_all_)
@@ -61,8 +63,10 @@ void zmq::dgram_t::xattach_pipe (pipe_t *pipe_, bool subscribe_to_all_)
     //  The socket rejects any further connection requests.
     if (pipe == NULL)
         pipe = pipe_;
-    else
+    else {
+    	LOGD("ZMQ_DGRAM socket can only be connected to a single peer");
         pipe_->terminate (false);
+    }
 }
 
 void zmq::dgram_t::xpipe_terminated (pipe_t *pipe_)
